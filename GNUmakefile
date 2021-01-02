@@ -169,6 +169,15 @@ KERN_SAN_CFLAGS += -fsanitize=undefined \
 
 endif
 
+ifdef GRADE3_TEST
+CFLAGS += -DGRADE3_TEST=$(GRADE3_TEST)
+CFLAGS += -DGRADE3_FUNC=$(GRADE3_FUNC)
+CFLAGS += -DGRADE3_FAIL=$(GRADE3_FAIL)
+CFLAGS += -DGRADE3_PFX1=$(GRADE3_PFX1)
+CFLAGS += -DGRADE3_PFX2=$(GRADE3_PFX2)
+.SILENT:
+endif
+
 # Common linker flags
 LDFLAGS := -m elf_x86_64 -z max-page-size=0x1000 --print-gc-sections
 
@@ -216,6 +225,8 @@ $(OBJDIR)/.vars.%: FORCE
 
 # Include Makefrags for subdirectories
 include kern/Makefrag
+include lib/Makefrag
+include prog/Makefrag
 
 QEMUOPTS = -hda fat:rw:$(JOS_ESP) -serial mon:stdio -gdb tcp::$(GDBPORT)
 QEMUOPTS += -m 8192M
