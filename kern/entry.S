@@ -77,9 +77,13 @@ sys_yield:
   jmp .
 
 # LAB 3: Your code here.
+
 .globl sys_exit
 .type  sys_exit, @function
 sys_exit:
+  leaq bootstacktop(%rip),%rsp # rsp <-- address (leaq) bootstacktop relatively rip
+  xor %ebp, %ebp 
+  call csys_exit
   jmp .
 #endif
 
