@@ -126,6 +126,11 @@ i386_init(void) {
     ctor++;
   }
 
+  // LAB 5 code
+  pic_init();
+  rtc_init();
+  // LAB 5 code end
+
   timers_init();
 
   // Framebuffer init should be done after memory init.
@@ -135,22 +140,20 @@ i386_init(void) {
   // user environment initialization functions
   env_init();
 
-<<<<<<< HEAD
-  
-=======
   // choose the timer used for scheduling: hpet or pit
   timers_schedule("hpet0");
+
   clock_idt_init();
 
->>>>>>> lab5
+
 #ifdef CONFIG_KSPACE
   // Touch all you want.
   ENV_CREATE_KERNEL_TYPE(prog_test1);
   ENV_CREATE_KERNEL_TYPE(prog_test2);
-  ENV_CREATE_KERNEL_TYPE(prog_test3);
-  ENV_CREATE_KERNEL_TYPE(prog_test4);
-  ENV_CREATE_KERNEL_TYPE(prog_test5);
-  ENV_CREATE_KERNEL_TYPE(prog_test6);
+  // ENV_CREATE_KERNEL_TYPE(prog_test3);
+  // ENV_CREATE_KERNEL_TYPE(prog_test4);
+  // ENV_CREATE_KERNEL_TYPE(prog_test5);
+  // ENV_CREATE_KERNEL_TYPE(prog_test6);
 #endif
 
   // Schedule and run the first user environment!
@@ -170,8 +173,6 @@ const char *panicstr = NULL;
 void
 _panic(const char *file, int line, const char *fmt, ...) {
   va_list ap;
-
-
 
   if (panicstr)
     goto dead;
@@ -203,4 +204,3 @@ _warn(const char *file, int line, const char *fmt, ...) {
   cprintf("\n");
   va_end(ap);
 }
-

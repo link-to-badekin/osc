@@ -126,16 +126,18 @@ envid2env(envid_t envid, struct Env **env_store, bool checkperm) {
 void
 env_init(void) {
   // Set up envs array
-  // LAB 3: Your code here.
-	env_free_list = NULL;
-	for (int i = NENV - 1; i >= 0; i--) { 
+    
+  // LAB 3 code
+  env_free_list = NULL; // NULLing new env_list
+  for (int i = NENV - 1; i >= 0; i--) {
     // initialization in for loop every new environment till max env met
     envs[i].env_link = env_free_list;
     envs[i].env_id   = 0;
     env_free_list    = &envs[i];
   }
-
   env_init_percpu();
+  // LAB 3 code end
+    
 }
 
 // Load GDT and segment descriptors.
@@ -214,14 +216,11 @@ env_alloc(struct Env **newenv_store, envid_t parent_id) {
   e->env_tf.tf_ss = GD_KD | 0;
   e->env_tf.tf_cs = GD_KT | 0;
 
-  // LAB 3: Your code here.
- 
-  //Allocate stack for new task
-  static uintptr_t STACK_TOP = 0x2000000;
-  e->env_tf.tf_rsp = STACK_TOP;
-  STACK_TOP -= 2 * PGSIZE;
-  // For now init trapframe with current RFLAGS
-  e->env_tf.tf_rflags = read_rflags();
+  // LAB 3 code
+  static int STACK_TOP = 0x2000000;
+  e->env_tf.tf_rsp = STACK_TOP - (e - envs) * 2 * PGSIZE;
+  // LAB 3 code end
+    
 #else
 #endif
 
@@ -241,11 +240,12 @@ env_alloc(struct Env **newenv_store, envid_t parent_id) {
 #ifdef CONFIG_KSPACE
 static void
 bind_functions(struct Env *e, uint8_t *binary) {
-  //find_function from kdebug.c should be used
-  // LAB 3: Your code here.
-  struct Elf *elf    = (struct Elf *)binary;
+  // find_function from kdebug.c should be used
+  // LAB 3 code
+
+  struct Elf *elf = (struct Elf *)binary;
   struct Secthdr *sh = (struct Secthdr *)(binary + elf->e_shoff);
-  const char *shstr  = (char *)binary + sh[elf->e_shstrndx].sh_offset;
+  const char *shstr = (char *)binary + sh[elf->e_shstrndx].sh_offset;
 
   // Find string table
   size_t strtab = -1UL;
@@ -278,7 +278,7 @@ bind_functions(struct Env *e, uint8_t *binary) {
       }
     }
   }
-  
+  // LAB 3 code end
 }
 #endif
 
@@ -323,36 +323,34 @@ load_icode(struct Env *e, uint8_t *binary) {
   //  to make sure that the environment starts executing there.
   //  What?  (See env_run() and env_pop_tf() below.)
 
-  // LAB 3: Your code here.
-  struct Elf *elfhdr = (struct Elf *)binary; // binary -> *ELF
-  if (elfhdr->e_magic != ELF_MAGIC) {
+  // LAB 3 code
+  
+  struct Elf *elf = (struct Elf *)binary; 
+  if (elf->e_magic != ELF_MAGIC) {
     cprintf("Unexpected ELF format\n");
     return;
   }
-  // elf->e_phoff offset relative to the beginning of the file
-  struct Proghdr *ph = (struct Proghdr *)(binary + elfhdr->e_phoff); 
-  
-  for (size_t i = 0; i < elfhdr->e_phnum; i++) { //elfhdr->e_phnum - Number of program headers
+
+  struct Proghdr *ph = (struct Proghdr *)(binary + elf->e_phoff); 
+
+  for (size_t i = 0; i < elf->e_phnum; i++) { 
     if (ph[i].p_type == ELF_PROG_LOAD) {
 
-      void *src = binary + ph[i].p_offset;
-      void *dst = (void *)ph[i].p_va;
+    void *src = binary + ph[i].p_offset;
+    void *dst = (void *)ph[i].p_va;
 
-      size_t memsz  = ph[i].p_memsz;
-      size_t filesz = MIN(ph[i].p_filesz, memsz);
+    size_t memsz  = ph[i].p_memsz;
+    size_t filesz = MIN(ph[i].p_filesz, memsz);
 
-      memcpy(dst, src, filesz);                // dst (дистинейшн) <- src (код) size filesz
-      memset(dst + filesz, 0, memsz - filesz); // number of zeros = memsz - filesz.
-      // Т.е. зануляем всю выделенную память сегмента кода, оставшуюяся после копирования src. 
+    memcpy(dst, src, filesz);                
+    memset(dst + filesz, 0, memsz - filesz); 
     }
 
-    e->env_tf.tf_rip = elfhdr->e_entry; 
-    //в регистр rip записываем адрес точки входа для выполнения процесса
-
-    bind_functions(e, binary); 
-  }
+    e->env_tf.tf_rip = elf->e_entry; 
+    bind_functions(e, binary); // 
+  };
+  // LAB 3 code end
 }
-
 
 //
 // Allocates a new env with env_alloc, loads the named elf
@@ -363,16 +361,18 @@ load_icode(struct Env *e, uint8_t *binary) {
 //
 void
 env_create(uint8_t *binary, enum EnvType type) {
-  // LAB 3: Your code here.
-  struct Env *env;
-  int err;
-  if ((err = env_alloc(&env, 0)) < 0) {
-		panic("env_alloc: %i", err);
+    
+  // LAB 3 code
+  struct Env *newenv;
+  if (env_alloc(&newenv, 0) < 0) {
+    panic("Can't allocate new environment");  
   }
+      
+  newenv->env_type = type;
 
-  env->env_type = type;
-
-  load_icode(env, binary);
+  load_icode(newenv, binary); // load instruction code
+  // LAB 3 code end
+    
 }
 
 //
@@ -396,15 +396,17 @@ env_free(struct Env *e) {
 //
 void
 env_destroy(struct Env *e) {
-  // LAB 3: Your code here.
   // If e is currently running on other CPUs, we change its state to
   // ENV_DYING. A zombie environment will be freed the next time
   // it traps to the kernel.
-  e->env_status = ENV_DYING; // environment died, long live new environment (not here)!
+    
+  // LAB 3 code
+  e->env_status = ENV_DYING;
   if (e == curenv) {
-    env_free(e); // clean env
-    sched_yield(); // the function is called to handle the environment change/deletion.
+    env_free(e);
+    sched_yield();
   }
+  // LAB 3 code end
 }
 
 #ifdef CONFIG_KSPACE
@@ -511,18 +513,26 @@ env_run(struct Env *e) {
   //	and make sure you have set the relevant parts of
   //	e->env_tf to sensible values.
   //
-  // LAB 3: Your code here.
-  if (curenv != e) {
-	     if (curenv && curenv->env_status == ENV_RUNNING) {
-	       curenv->env_status = ENV_RUNNABLE; // start the process
-	     }
-	     curenv = e;
-	     curenv->env_status = ENV_RUNNING;
-	     curenv->env_runs++; //update the number of times the process context starts
+    
+  // LAB 3 code
+  if (curenv) {  
+    if (curenv->env_status == ENV_DYING) { 
+      struct Env *old = curenv;  
+      env_free(curenv);  
+      if (old == e) { 
+        sched_yield();  
+      }
+    } else if (curenv->env_status == ENV_RUNNING) { 
+      curenv->env_status = ENV_RUNNABLE;  
+    }
   }
+      
+  curenv = e; 
+  curenv->env_status = ENV_RUNNING; 
+  curenv->env_runs++; 
 
-
-  env_pop_tf(&e->env_tf); // restoring environment variables
-
+  env_pop_tf(&curenv->env_tf);
+  // LAB 3 code end
+    
   while(1) {}
 }

@@ -138,8 +138,12 @@ trap_dispatch(struct Trapframe *tf) {
   }
 
   // All timers are actually routed through this IRQ.
-  if (tf->tf_trapno == IRQ_OFFSET + IRQ_CLOCK) {
+  if (tf->tf_trapno == IRQ_OFFSET + IRQ_CLOCK) {    
+    // rtc_check_status();
+    // pic_send_eoi(IRQ_CLOCK); // should-be
+    // pic_send_eoi( rtc_check_status() );
     timer_for_schedule->handle_interrupts();
+
     sched_yield();
     return;
   }
