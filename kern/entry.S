@@ -8,6 +8,7 @@
 
 .globl entry
 entry:
+  cli
   # Save LoadParams in uefi_lp.
   movq %rcx, uefi_lp(%rip)
 
@@ -81,6 +82,8 @@ sys_yield:
 .globl sys_exit
 .type  sys_exit, @function
 sys_exit:
+  # LAB 4 code
+  cli
   leaq bootstacktop(%rip),%rsp # rsp <-- address (leaq) bootstacktop relatively rip
   xor %ebp, %ebp 
   call csys_exit

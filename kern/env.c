@@ -135,7 +135,7 @@ env_init(void) {
     env_free_list    = &envs[i];
   }
 
-  //env_init_percpu();
+  env_init_percpu();
 }
 
 // Load GDT and segment descriptors.

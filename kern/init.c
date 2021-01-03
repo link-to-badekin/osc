@@ -97,11 +97,13 @@ i386_init(void) {
   // user environment initialization functions
   env_init();
 
-  irq_setmask_8259A(irq_mask_8259A & ~(1 << IRQ_CLOCK));
+  
   clock_idt_init();
 
   pic_init();
   rtc_init();
+
+  irq_setmask_8259A(irq_mask_8259A & ~(1 << IRQ_CLOCK));
 
 #ifdef CONFIG_KSPACE
   // Touch all you want.
@@ -128,6 +130,8 @@ const char *panicstr = NULL;
 void
 _panic(const char *file, int line, const char *fmt, ...) {
   va_list ap;
+
+
 
   if (panicstr)
     goto dead;
@@ -159,3 +163,4 @@ _warn(const char *file, int line, const char *fmt, ...) {
   cprintf("\n");
   va_end(ap);
 }
+
