@@ -5,9 +5,10 @@
 #include <inc/elf.h>
 #include <inc/x86.h>
 
-#include <kern/kdebug.h>
+
 #include <kern/pmap.h>
 #include <kern/env.h>
+#include <kern/kdebug.h>
 #include <inc/uefi.h>
 
 void
@@ -107,7 +108,7 @@ find_function(const char *const fname) {
   // and naive_address_by_fname which performs full traversal of DIE tree.
     
   // LAB 3 code
-    
+#ifdef CONFIG_KSPACE  
   struct {
     const char *name;
     uintptr_t addr;
@@ -121,7 +122,7 @@ find_function(const char *const fname) {
       return scentry[i].addr;
     }
   }
-    
+#endif
   struct Dwarf_Addrs addrs;
   load_kernel_dwarf_info(&addrs);
   uintptr_t offset = 0;

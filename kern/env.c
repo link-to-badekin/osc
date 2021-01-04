@@ -240,8 +240,9 @@ env_alloc(struct Env **newenv_store, envid_t parent_id) {
 #ifdef CONFIG_KSPACE
 static void
 bind_functions(struct Env *e, uint8_t *binary) {
-  // find_function from kdebug.c should be used
-  // LAB 3 code
+  
+  //find_function from kdebug.c should be used
+  //LAB 3 code
 
   struct Elf *elf = (struct Elf *)binary;
   struct Secthdr *sh = (struct Secthdr *)(binary + elf->e_shoff);
@@ -347,7 +348,9 @@ load_icode(struct Env *e, uint8_t *binary) {
     }
 
     e->env_tf.tf_rip = elf->e_entry; 
-    bind_functions(e, binary); // 
+#ifdef CONFIG_KSPACE    
+    bind_functions(e, binary);
+#endif  
   };
   // LAB 3 code end
 }
