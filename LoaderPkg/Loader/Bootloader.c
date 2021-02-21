@@ -87,6 +87,15 @@ InitGraphics (
   EFI_STATUS                    Status;
   EFI_GRAPHICS_OUTPUT_PROTOCOL  *GraphicsOutput;
 
+  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION   *Info = (EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *)NULL;
+  
+  ///UINTN NumberIndex =  ;
+  UINTN SizeOfModInfo = 0u;
+  ////
+  UINT32 DetWidth  = 960U;
+  UINT32 DetHeight = 720U;
+  UINT32 MaxModeNumber = -1U;
+  /// 
   ASSERT (LoaderParams != NULL);
 
   STATIC EFI_GRAPHICS_OUTPUT_BLT_PIXEL mBlackColour = {0x00, 0x00, 0x00, 0x00};
@@ -105,7 +114,7 @@ InitGraphics (
   }
 
   //
-  // LAB 1: Your code here.
+  // LAB 1: Your code here.                                                                                                           
   //
   // Switch to the maximum or any other resolution of your preference.
   // Refer to Graphics Output Protocol description in UEFI spec for
@@ -113,7 +122,49 @@ InitGraphics (
   //
   // Hint: Use GetMode/SetMode functions.
   //
+  for ( UINT32 i = 0; i < GraphicsOutput->Mode->MaxMode; i++ ){
+    
+    Status = GraphicsOutput->QueryMode(GraphicsOutput, i, &SizeOfModInfo, &Info );
+    if ( EFI_ERROR (Status) ){
+      DEBUG ( ( DEBUG_WARN, "JOS: WARN: Could not query graphics mode: %r\n", Status ) );
+      break;
+    }
+    
+    if ( Info->HorizontalResolution == DetWidth
+        && Info->VerticalResolution == DetHeight
+        && Info->PixelFormat == PixelBlueGreenRedReserved8BitPerColor ){
+      MaxModeNumber = i;
+      break;
+    }
+    
+  }
 
+  if ( MaxModeNumber != -1U ){
+    Status = GraphicsOutput->SetMode( GraphicsOutput, MaxModeNumber );
+    
+    if ( EFI_ERROR( Status ) ){
+      DEBUG( ( DEBUG_WARN, "JOS: ERR: Could not set requested graphics mode: %r\n", Status ) );
+      
+      DEBUG( ( DEBUG_INFO, "JOS: INFO: Trying to set first available graphics mode... \n") );
+      
+      Status = GraphicsOutput->SetMode( GraphicsOutput, 0 );
+      
+      if ( EFI_ERROR( Status ) ){
+        DEBUG( ( DEBUG_ERROR, "JOS: ERR: Could not set fallback graphics mode: %r\n", Status ) );
+      }
+    }
+    
+  } else {
+    DEBUG( ( DEBUG_INFO, "JOS: INFO: Could not find requested graphics mode \n" ) );
+    
+    DEBUG( ( DEBUG_INFO, "JOS: INFO: Trying to set first available graphics mode... \n") );
+    
+    Status = GraphicsOutput->SetMode( GraphicsOutput, 0 );
+    
+    if ( EFI_ERROR( Status ) ){
+      DEBUG( ( DEBUG_ERROR, "JOS: ERR: Could not set fallback graphics mode: %r\n", Status ) );
+    }
+  }
   //
   // Fill screen with black.
   //
@@ -133,6 +184,7 @@ InitGraphics (
   //
   // Fill GPU properties.
   //
+ 
   LoaderParams->FrameBufferBase      = GraphicsOutput->Mode->FrameBufferBase;
   LoaderParams->FrameBufferSize      = GraphicsOutput->Mode->FrameBufferSize;
   LoaderParams->HorizontalResolution = GraphicsOutput->Mode->Info->HorizontalResolution;
@@ -966,7 +1018,7 @@ UefiMain (
   UINTN              EntryPoint;
   VOID               *GateData;
 
-#if 1 ///< Uncomment to await debugging
+#if 0 ///< Uncomment to await debugging
   volatile BOOLEAN   Connected;
   DEBUG ((DEBUG_INFO, "JOS: Awaiting debugger connection\n"));
 

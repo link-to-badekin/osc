@@ -134,10 +134,15 @@ i386_init(void) {
     (*ctor)();
     ctor++;
   }
+  // LAB 5 code
+  pic_init();
+  rtc_init();
+  // LAB 5 code end
 
 #ifdef SANITIZE_SHADOW_BASE
   kasan_mem_init();
 #endif
+
 
   timers_init();
 
@@ -151,12 +156,15 @@ i386_init(void) {
 
   // choose the timer used for scheduling: hpet or pit
   timers_schedule("hpet0");
+
   clock_idt_init();
+
 
 #ifdef CONFIG_KSPACE
   // Touch all you want.
   ENV_CREATE_KERNEL_TYPE(prog_test1);
   ENV_CREATE_KERNEL_TYPE(prog_test2);
+<<<<<<< HEAD
   ENV_CREATE_KERNEL_TYPE(prog_test3);
   ENV_CREATE_KERNEL_TYPE(prog_test4);
   ENV_CREATE_KERNEL_TYPE(prog_test5);
@@ -169,6 +177,12 @@ i386_init(void) {
   // Touch all you want.
   ENV_CREATE(user_hello, ENV_TYPE_USER);
 #endif // TEST*
+  
+  // ENV_CREATE_KERNEL_TYPE(prog_test3);
+  // ENV_CREATE_KERNEL_TYPE(prog_test4);
+  // ENV_CREATE_KERNEL_TYPE(prog_test5);
+  // ENV_CREATE_KERNEL_TYPE(prog_test6);
+
 #endif
 
   // Schedule and run the first user environment!
