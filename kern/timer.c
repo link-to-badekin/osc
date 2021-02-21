@@ -90,30 +90,62 @@ acpi_enable(void) {
   }
 }
 
+RSDP *
+get_rsdp(void) {
+  static void *krsdp = NULL;
+  if (krsdp != NULL)
+    return krsdp;
+  if (uefi_lp->ACPIRoot == 0)
+    panic("No rsdp\n");
+  krsdp = mmio_map_region(uefi_lp->ACPIRoot, sizeof(RSDP));
+  return krsdp;
+}
+
+
 // LAB 5 code
 static void * acpi_find_table(const char * sign) {
   static RSDT * krsdt;
   static size_t krsdt_len;
   static size_t krsdt_entsz;
- 
+  
+  uint8_t cksm = 0;
 
   if (!krsdt) {
     if (!uefi_lp->ACPIRoot) {
       panic("No rsdp\n");
     }
     RSDP * krsdp = mmio_map_region(uefi_lp->ACPIRoot, sizeof(RSDP));
- 
+    
+    if (strncmp(krsdp->Signature, "RSD PTR", 8))
+      for (size_t i = 0; i < offsetof(RSDP, Length); i++)
+      cksm = (uint8_t)(cksm + ((uint8_t *)krsdp)[i]);
+    if (cksm)
+      panic("Invalid RSDP");
+
     uint64_t rsdt_pa = krsdp->RsdtAddress;
     krsdt_entsz = 4;
     if (krsdp->Revision) {
       /* ACPI version >= 2.0 */
+      for (size_t i = 0; i < krsdp->Length; i++)
+        cksm = (uint8_t)(cksm + ((uint8_t *)krsdp)[i]);
+      if (cksm)
+        panic("Invalid RSDP");	
       rsdt_pa = krsdp->XsdtAddress;
       krsdt_entsz = 8;
     }
 
     krsdt = mmio_map_region(rsdt_pa, sizeof(RSDT));
     /* Remap since we can obtain table length only after mapping */
-    krsdt = mmio_map_region(rsdt_pa, krsdt->h.Length);
+    krsdt = mmio_remap_last_region(rsdt_pa, krsdt, sizeof(RSDP), krsdt->h.Length);
+
+    for (size_t i = 0; i < krsdt->h.Length; i++)
+      cksm = (uint8_t)(cksm + ((uint8_t *)krsdt)[i]);
+
+    if (cksm)
+      panic("Invalid RSDP");
+
+    if (strncmp(krsdt->h.Signature, krsdp->Revision ? "XSDT" : "RSDT", 4))
+      panic("Invalid RSDT");
 
     krsdt_len = (krsdt->h.Length - sizeof(RSDT)) / 4;
     if (krsdp->Revision) {
@@ -130,9 +162,16 @@ static void * acpi_find_table(const char * sign) {
 
     hd = mmio_map_region(fadt_pa, sizeof(ACPISDTHeader));
     /* Remap since we can obtain table length only after mapping */
-    hd = mmio_map_region(fadt_pa, hd->Length);
+    hd = mmio_remap_last_region(fadt_pa, hd, sizeof(ACPISDTHeader), krsdt->h.Length);
 
-    if (!strncmp(hd->Signature, sign, 4)) return hd;
+    for (size_t i = 0; i < hd->Length; i++)
+    cksm = (uint8_t)(cksm + ((uint8_t *)hd)[i]);
+    if (cksm)
+      panic("ACPI table '%.4s' invalid", hd->Signature);
+
+    if (!strncmp(hd->Signature, sign, 4)) 
+      return hd;
+
   }
 
   return NULL;
@@ -367,5 +406,4 @@ pmtimer_cpu_frequency(void) {
 
   return (tsc1 - tsc0) * PM_FREQ / delta;
   // LAB 5 code end
-  // return 0;
 }
