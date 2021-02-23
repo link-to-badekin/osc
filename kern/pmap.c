@@ -125,7 +125,7 @@ is_page_allocatable(size_t pgnum) {
 
 //  Fix loading params and memory map address to virtual ones.
 static void
-fix_lp_addresses(void) {
+fix_lp_addresses(void) { 
   mmap_base = (EFI_MEMORY_DESCRIPTOR *)(uintptr_t)uefi_lp->MemoryMapVirt;
   mmap_end  = (EFI_MEMORY_DESCRIPTOR *)((uintptr_t)uefi_lp->MemoryMapVirt + uefi_lp->MemoryMapSize);
   uefi_lp   = (LOADER_PARAMS *)uefi_lp->SelfVirtual;
@@ -177,12 +177,17 @@ boot_alloc(uint32_t n) {
   // to a multiple of PGSIZE.
   //
   // LAB 6
+  
+  if (!n) {
+    return nextfree;
+  }
 
   result = nextfree;
   nextfree += ROUNDUP(n, PGSIZE);
   if (PADDR(nextfree) > PGSIZE * npages) {
-    panic("Out of memory on boot, what? how?!");
+    panic("Out of memory on boot ");
   }
+
 // This is for sanitizers
 #ifdef SANITIZE_SHADOW_BASE
   // Unpoison the result since it is now allocated.
@@ -256,7 +261,8 @@ mem_init(void) {
   //////////////////////////////////////////////////////////////////////
   // Make 'envs' point to an array of size 'NENV' of 'struct Env'.
   // LAB 8: Your code here.
-
+  envs = (struct Env *)boot_alloc(sizeof(* envs) * NENV);
+  memset(envs, 0, sizeof(*envs) * NENV);
   //////////////////////////////////////////////////////////////////////
   // Now that we've allocated the initial kernel data structures, we set
   // up the list of free physical pages. Once we've done so, all further
@@ -288,8 +294,11 @@ mem_init(void) {
   // Permissions:
   //    - the new image at UENVS  -- kernel R, user R
   //    - envs itself -- kernel RW, user NONE
-  // LAB 8: Your code here.
+  // LAB 8: Your code here. 
+  //check UENVS (inc/memlayout.h)
 
+  boot_map_region(kern_pml4e, UENVS, ROUNDUP(NENV * sizeof(*envs), PGSIZE), PADDR(envs), PTE_U | PTE_P);
+  
   //////////////////////////////////////////////////////////////////////
   // Use the physical memory that 'bootstack' refers to as the kernel
   // stack.  The kernel stack grows down from virtual address KSTACKTOP.
@@ -313,7 +322,9 @@ mem_init(void) {
   // we just set up the mapping anyway.
   // Permissions: kernel RW, user NONE
   // LAB 7: Your code goes here:
+
   boot_map_region(kern_pml4e, KERNBASE, npages * PGSIZE, 0, PTE_P | PTE_W);
+
   // Additionally map kernel to lower 32-bit addresses. Assumes kernel should not exceed 50 mb.
   size_to_alloc = MIN(0x3200000, npages * PGSIZE);
   boot_map_region(kern_pml4e, X86ADDR(KERNBASE), size_to_alloc, 0, PTE_P | PTE_W);
@@ -454,10 +465,10 @@ page_init(void) {
 
   //  2) The rest of base memory, [PGSIZE, npages_basemem * PGSIZE)
   //     is free.
-  pages[2].pp_ref = 0;
-  page_free_list  = &pages[2];
-  last            = &pages[2];
-  for (i = 2; i < npages_basemem; i++) {
+  pages[1].pp_ref = 0;
+  page_free_list  = &pages[1];
+  last            = &pages[1];
+  for (i = 1; i < npages_basemem; i++) {
     if (is_page_allocatable(i)) {
       pages[i].pp_ref = 0;
       last->pp_link   = &pages[i];
@@ -548,18 +559,10 @@ page_free(struct PageInfo *pp) {
   // Hint: You may want to panic if pp->pp_ref is nonzero or
   // pp->pp_link is not NULL.
   //lab 6
-  if (pp->pp_ref) {
-    panic("page_free: Page is still referenced!\n");
-  }
-
-  if (pp->pp_link) {
-    panic("page_free: Page is already freed!\n");
-  }
+  
 
   if (pp->pp_ref != 0 || pp->pp_link != NULL)
     panic("page_free: Page cannot be freed!\n");
-
-  // lab 6 end
 
   pp->pp_link    = page_free_list;
   page_free_list = pp;
@@ -853,7 +856,6 @@ mmio_map_region(physaddr_t pa, size_t size) {
   return new;
 }
 
-<<<<<<< HEAD
 static uintptr_t user_mem_check_addr;
 
 //
@@ -873,10 +875,30 @@ static uintptr_t user_mem_check_addr;
 //
 // Returns 0 if the user program can access this range of addresses,
 // and -E_FAULT otherwise.
-//
+//внимание
 int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm) {
   // LAB 8: Your code here.
+   perm = perm | PTE_P;
+
+
+  const void *end = va + len;
+  const void *va_b = va;
+  va = (void*) ROUNDDOWN(va, PGSIZE);
+  while (va < end)
+  {
+    pte_t *pte = pml4e_walk(env->env_pml4e, va, 0);
+    if (!pte || (*pte & perm) != perm ){
+      user_mem_check_addr = (uintptr_t) MAX(va,va_b);
+      return -E_FAULT;
+    }
+    va += PGSIZE;
+  }
+
+  if ((uintptr_t) end > ULIM){
+    user_mem_check_addr = MAX(ULIM, (uintptr_t)va_b);
+    return -E_FAULT;
+  }
 
   return 0;
 }
