@@ -9,9 +9,9 @@
 
 #ifdef CONFIG_KSPACE
 .comm intr_ret_rip, 8
+.comm intr_rbp_reg, 8
 .comm intr_rsp_reg, 8
 .comm intr_cs, 8
-.comm intr_ss, 8
 .comm intr_rflags, 8
 #endif
 
@@ -76,15 +76,16 @@ clock_thdlr:
   popq intr_ret_rip(%rip)
   popq intr_cs(%rip)
   popq intr_rflags(%rip)
-  popq intr_rsp_reg(%rip)
-  popq intr_ss(%rip)
+  movq %rbp, intr_rbp_reg(%rip)
+  movq %rsp, intr_rsp_reg(%rip)
+  movq $0x0,%rbp
   leaq bootstacktop(%rip),%rsp
-  pushq intr_ss(%rip)
+  pushq $GD_KD
   pushq intr_rsp_reg(%rip)
   pushq intr_rflags(%rip)
   pushq intr_cs(%rip)
   pushq intr_ret_rip(%rip)
-  pushq $0x0
+  pushq $0
   pushq $(IRQ_OFFSET + IRQ_CLOCK)
   pushq $0x0 // %ds
   pushq $0x0 // %es
@@ -93,7 +94,7 @@ clock_thdlr:
   pushq %rbx
   pushq %rcx
   pushq %rdx
-  pushq %rbp
+  pushq intr_rbp_reg(%rip)
   pushq %rdi
   pushq %rsi
   pushq %r8
@@ -105,12 +106,33 @@ clock_thdlr:
   pushq %r14
   pushq %r15
 
-  xorl %ebp, %ebp
   movq %rsp,%rdi
   call trap
   jmp .
 #else
 TRAPHANDLER_NOEC(clock_thdlr, IRQ_OFFSET + IRQ_CLOCK)
 // LAB 8: Your code here.
+// check CHAPTER 6 INTERRUPT AND EXCEPTION HANDLING and inc/trap.h
+TRAPHANDLER_NOEC(divide_thdlr, T_DIVIDE)
+TRAPHANDLER_NOEC(debug_thdlr, T_DEBUG)
+TRAPHANDLER_NOEC(nmi_thdlr, T_NMI)
+TRAPHANDLER_NOEC(brkpt_thdlr, T_BRKPT)
+TRAPHANDLER_NOEC(oflow_thdlr, T_OFLOW)
+TRAPHANDLER_NOEC(bound_thdlr, T_BOUND)
+TRAPHANDLER_NOEC(illop_thdlr, T_ILLOP)
+TRAPHANDLER_NOEC(device_thdlr, T_DEVICE)
+TRAPHANDLER_NOEC(fperr_thdlr, T_FPERR)
+TRAPHANDLER_NOEC(mchk_thdlr, T_MCHK)
+TRAPHANDLER_NOEC(simderr_thdlr, T_SIMDERR)
+TRAPHANDLER_NOEC(syscall_thdlr, T_SYSCALL)
+TRAPHANDLER(dblflt_thdlr, T_DBLFLT)
+TRAPHANDLER(tss_thdlr, T_TSS)
+TRAPHANDLER(segnp_thdlr, T_SEGNP)
+TRAPHANDLER(stack_thdlr, T_STACK)
+TRAPHANDLER(gpflt_thdlr, T_GPFLT)
+TRAPHANDLER(pgflt_thdlr, T_PGFLT)
+TRAPHANDLER(align_thdlr, T_ALIGN)
+//21 - 31 Intel reserved. Do not use.
+
 
 #endif
