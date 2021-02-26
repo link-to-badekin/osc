@@ -70,7 +70,40 @@ void
 trap_init(void) {
   // extern struct Segdesc gdt[];
   // LAB 8: Your code here.
+  extern void (*divide_thdlr)(void);
+  extern void (*debug_thdlr)(void);
+  extern void (*nmi_thdlr)(void);
+  extern void (*brkpt_thdlr)(void);
+  extern void (*oflow_thdlr)(void);
+  extern void (*bound_thdlr)(void);
+  extern void (*illop_thdlr)(void);
+  extern void (*device_thdlr)(void);
+  extern void (*tss_thdlr)(void);
+  extern void (*segnp_thdlr)(void);
+  extern void (*stack_thdlr)(void);
+  extern void (*gpflt_thdlr)(void);
+  extern void (*pgflt_thdlr)(void);
+  extern void (*fperr_thdlr)(void);
 
+  extern void (*syscall_thdlr)(void);
+
+  SETGATE(idt[T_DIVIDE], 0, GD_KT, (uint64_t) &divide_thdlr, 0);
+  SETGATE(idt[T_DEBUG], 0, GD_KT, (uint64_t) &debug_thdlr, 0);
+  SETGATE(idt[T_NMI], 0, GD_KT, (uint64_t) &nmi_thdlr, 0);
+  SETGATE(idt[T_BRKPT], 0, GD_KT, (uint64_t) &brkpt_thdlr, 3);
+  SETGATE(idt[T_OFLOW], 0, GD_KT, (uint64_t) &oflow_thdlr, 0);
+  SETGATE(idt[T_BOUND], 0, GD_KT, (uint64_t) &bound_thdlr, 0);
+  SETGATE(idt[T_ILLOP], 0, GD_KT, (uint64_t) &illop_thdlr, 0);
+  SETGATE(idt[T_DEVICE], 0, GD_KT, (uint64_t) &device_thdlr, 0);
+  SETGATE(idt[T_TSS], 0, GD_KT, (uint64_t) &tss_thdlr, 0);
+  SETGATE(idt[T_SEGNP], 0, GD_KT, (uint64_t) &segnp_thdlr, 0);
+  SETGATE(idt[T_STACK], 0, GD_KT, (uint64_t) &stack_thdlr, 0);
+  SETGATE(idt[T_GPFLT], 0, GD_KT, (uint64_t) &gpflt_thdlr, 0);
+  SETGATE(idt[T_PGFLT], 0, GD_KT, (uint64_t) &pgflt_thdlr, 0);
+  SETGATE(idt[T_FPERR], 0, GD_KT, (uint64_t) &fperr_thdlr, 0);
+
+  SETGATE(idt[T_SYSCALL], 0, GD_KT, (uint64_t) &syscall_thdlr, 3);
+  // lab 8 end
   // Per-CPU setup
   trap_init_percpu();
 }
@@ -156,7 +189,7 @@ print_regs(struct PushRegs *regs) {
 
 static void
 trap_dispatch(struct Trapframe *tf) {
-
+  //lab 8
   int64_t syscallno, a1, a2, a3, a4, a5, ret;
   if (tf->tf_trapno == T_SYSCALL) {
     syscallno           = tf->tf_regs.reg_rax;
@@ -167,6 +200,8 @@ trap_dispatch(struct Trapframe *tf) {
     a5                  = tf->tf_regs.reg_rsi;
     ret                 = syscall(syscallno, a1, a2, a3, a4, a5);
     tf->tf_regs.reg_rax = ret;
+    // breakpoint calls the monitor 
+    print_trapframe(tf);
     return;
   }
 
@@ -193,9 +228,11 @@ trap_dispatch(struct Trapframe *tf) {
 
   // All timers are actually routed through this IRQ.
   if (tf->tf_trapno == IRQ_OFFSET + IRQ_CLOCK) {    
+    //lab before
     // rtc_check_status();
     // pic_send_eoi(IRQ_CLOCK); // should-be
     // pic_send_eoi( rtc_check_status() );
+    //lab before
     timer_for_schedule->handle_interrupts();
 
     sched_yield();
@@ -273,6 +310,16 @@ page_fault_handler(struct Trapframe *tf) {
   // Handle kernel-mode page faults.
 
   // LAB 8: Your code here.
+  //kernel mode
+  if (!(tf->tf_cs & 3)) {
+    panic("page fault in kernel!");
+  }
 
-
+  // the page fault happened in user mode.
+  cprintf(".%08x. user fault va %08lx ip %08lx\n",
+    curenv->env_id, fault_va, tf->tf_rip);
+  print_trapframe(tf);
+  // Destroy the environment that caused the fault.
+  env_destroy(curenv);
+  // lab 8 end
 }

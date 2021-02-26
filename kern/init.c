@@ -138,11 +138,9 @@ i386_init(void) {
   pic_init();
   rtc_init();
   // LAB 5 code end
-
 #ifdef SANITIZE_SHADOW_BASE
   kasan_mem_init();
 #endif
-
 
   timers_init();
 
@@ -155,45 +153,44 @@ i386_init(void) {
   trap_init();
 
   // choose the timer used for scheduling: hpet or pit
-  //timers_schedule("hpet0");
-
-  //clock_idt_init();
-
+  timers_schedule("hpet0");
+  clock_idt_init();
 
 #ifdef CONFIG_KSPACE
   // Touch all you want.
   ENV_CREATE_KERNEL_TYPE(prog_test1);
-  //ENV_CREATE_KERNEL_TYPE(prog_test2);
-//<<<<<<< HEAD
-  //ENV_CREATE_KERNEL_TYPE(prog_test3);
-  //ENV_CREATE_KERNEL_TYPE(prog_test4);
-  //ENV_CREATE_KERNEL_TYPE(prog_test5);
-  //ENV_CREATE_KERNEL_TYPE(prog_test6);
+  ENV_CREATE_KERNEL_TYPE(prog_test2);
+  ENV_CREATE_KERNEL_TYPE(prog_test3);
+  ENV_CREATE_KERNEL_TYPE(prog_test4);
+  ENV_CREATE_KERNEL_TYPE(prog_test5);
+  ENV_CREATE_KERNEL_TYPE(prog_test6);
+#else
 #endif
-//ВНИМАНИЕ!
+
 #if defined(TEST)
+
   // Don't touch -- used by grading script!
+
   #define S(x) #x
   #define SS(x) S(x)
   cprintf("\n\nTEST: %s\n", SS(TEST));
 
   cprintf("A Test called!\n\n");
-
   ENV_CREATE(TEST, ENV_TYPE_USER);
-
   cprintf("Lemme test it...\n");
+
   #else
+
   #define S(x) #x
   #define SS(x) S(x)
   cprintf("\n\nTEST: %s\n", SS(TEST));
-
   cprintf("Hey boy\n");
-    
-  // Touch all you want.
+  
   ENV_CREATE(user_hello, ENV_TYPE_USER);
   cprintf("Im not running your tests for you today!\n");
 
 #endif // TEST*
+
   // Schedule and run the first user environment!
   sched_yield();
 }

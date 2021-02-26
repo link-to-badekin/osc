@@ -144,7 +144,7 @@ env_init(void) {
   env_init_percpu();
   // LAB 3 code end
     
-} 
+}
 
 // Load GDT and segment descriptors.
 void
@@ -205,15 +205,13 @@ env_setup_vm(struct Env *e) {
   //    - The functions in kern/pmap.h are handy.
 
   // LAB 8: Your code here.
-  e->env_pml4e = page2kva(p);
+	e->env_pml4e = page2kva(p);
   e->env_cr3 = page2pa(p);
 
   e->env_pml4e[1] = kern_pml4e[1];
-  pa2page( PTE_ADDR(kern_pml4e[1]) )->pp_ref++;
+  pa2page(PTE_ADDR(kern_pml4e[1]))->pp_ref++;
 
   e->env_pml4e[2] = e->env_cr3 | PTE_P | PTE_U;
-
-
   return 0;
 }
 
@@ -319,14 +317,13 @@ region_alloc(struct Env *e, void *va, size_t len) {
   //   (Watch out for corner-cases!)
   void *end = ROUNDUP(va + len, PGSIZE);
   va = ROUNDDOWN(va, PGSIZE);
-  struct PageInfo *pi;
-  cprintf("region alloc here \n");//внимание
-  while (va < end) {
+	struct PageInfo *pi;
+
+	while (va < end) {
     pi = page_alloc(0);
     page_insert(e->env_pml4e, pi, va, PTE_U | PTE_W);
     va += PGSIZE;
   }
-
 }
 
 #ifdef SANITIZE_USER_SHADOW_BASE
@@ -366,10 +363,9 @@ uvpt_shadow_map(struct Env *e) {
 #ifdef CONFIG_KSPACE
 static void
 bind_functions(struct Env *e, uint8_t *binary) {
-  
-  //find_function from kdebug.c should be used
-  //LAB 3 code
-  cprintf("bind function here ccc1 \n\n");
+  // find_function from kdebug.c should be used
+  // LAB 3 code
+
   struct Elf *elf = (struct Elf *)binary;
   struct Secthdr *sh = (struct Secthdr *)(binary + elf->e_shoff);
   const char *shstr = (char *)binary + sh[elf->e_shstrndx].sh_offset;
@@ -405,8 +401,6 @@ bind_functions(struct Env *e, uint8_t *binary) {
       }
     }
   }
-  cprintf("bind function here ccc2 \n\n");
-
   // LAB 3 code end
 }
 #endif
@@ -462,43 +456,46 @@ load_icode(struct Env *e, uint8_t *binary) {
   //  You must also do something with the program's entry point,
   //  to make sure that the environment starts executing there.
   //  What?  (See env_run() and env_pop_tf() below.)
-  // LAB 8/3: Your code here
-  cprintf("load code begin \n\n\n"); // внимание
-  struct Elf *elf = (struct Elf *)binary; 
+
+  // LAB 3 / 8
+  //  Elf and Proghdr check in Elf64.h
+  struct Elf *elf = (struct Elf *)binary; // binary -> ELF
   if (elf->e_magic != ELF_MAGIC) {
-    panic("Unexpected ELF format\n");
+    panic("Unexpected ELF format!\n");
   }
 
-  struct Proghdr *ph = (struct Proghdr *)(binary + elf->e_phoff); 
-
-  lcr3(PADDR(e->env_pml4e));
+  struct Proghdr *ph = (struct Proghdr *)(binary + elf->e_phoff); // Proghdr = prog header. Он лежит со смещением elf->e_phoff относительно начала фаила
   
-  for (size_t i = 0; i < elf->e_phnum; i++) { 
+  lcr3(PADDR(e->env_pml4e));
+  for (size_t i = 0; i < elf->e_phnum; i++) { // elf->e_phnum - число заголовков программы. 
     if (ph[i].p_type == ELF_PROG_LOAD) {
 
-    void *src = (void *)(binary + ph[i].p_offset);
-    void *dst = (void *)ph[i].p_va;
+      void *src = (void *)(binary + ph[i].p_offset);
+      void *dst = (void *)ph[i].p_va;
 
-    size_t memsz  = ph[i].p_memsz;
-    size_t filesz = MIN(ph[i].p_filesz, memsz);
+      size_t memsz  = ph[i].p_memsz;
+      size_t filesz = MIN(ph[i].p_filesz, memsz);
 
-    region_alloc(e, (void *) dst, memsz);
+      region_alloc(e, (void*) dst, memsz);
 
-    memcpy(dst, src, filesz);                
-    memset(dst + filesz, 0, memsz - filesz); 
+      memcpy(dst, src, filesz);                // dst <- src 
+      memset(dst + filesz, 0, memsz - filesz); 
     }
+  }
 
-    lcr3(PADDR(kern_pml4e));
+  lcr3(PADDR(kern_pml4e));
+  e->env_tf.tf_rip = elf->e_entry; 
+  //Виртуальный адрес точки входа 
+  // в регистр rip записываем адрес точки входа
+#ifdef CONFIG_KSPACE
+  bind_functions(e, binary);
+#endif
+  // LAB 3 / 8 code end
 
-    e->env_tf.tf_rip = elf->e_entry; 
-    cprintf("load code end \n\n\n"); // внимание
-#ifdef CONFIG_KSPACE    
-    bind_functions(e, binary);
-#endif  
-    region_alloc(e, (void *) (USTACKTOP - USTACKSIZE), USTACKSIZE);
-    cprintf("load code end all \n\n\n"); // внимание
-  };
-  // LAB 8 / 3 code end // внимание
+  // LAB 8 code
+  region_alloc(e, (void *) (USTACKTOP - USTACKSIZE), USTACKSIZE);
+  // LAB 8 code end
+
 #ifdef SANITIZE_USER_SHADOW_BASE
   region_alloc(e, (void*) SANITIZE_USER_SHADOW_BASE, SANITIZE_USER_SHADOW_SIZE);
   region_alloc(e, (void*) SANITIZE_USER_EXTRA_SHADOW_BASE, SANITIZE_USER_EXTRA_SHADOW_SIZE);
@@ -506,7 +503,6 @@ load_icode(struct Env *e, uint8_t *binary) {
   region_alloc(e, (void*) SANITIZE_USER_STACK_SHADOW_BASE, SANITIZE_USER_STACK_SHADOW_SIZE);
   region_alloc(e, (void*) SANITIZE_USER_VPT_SHADOW_BASE, SANITIZE_USER_VPT_SHADOW_SIZE);
 #endif
-
 }
 
 //
@@ -522,13 +518,12 @@ env_create(uint8_t *binary, enum EnvType type) {
   // LAB 3 code
   struct Env *newenv;
   if (env_alloc(&newenv, 0) < 0) {
-    panic("Can't allocate new environment");  
+    panic("Can't allocate new environment");  // попытка выделить среду – если нет – вылет по панике ядра
   }
       
   newenv->env_type = type;
-  cprintf("next line the load_icode\n\n");
-  load_icode(newenv, binary); // load instruction   code
-  cprintf("exit load_icode this env_create \n\n");
+
+  load_icode(newenv, binary); // load instruction code
   // LAB 3 code end
     
 }
@@ -722,8 +717,6 @@ env_pop_tf(struct Trapframe *tf) {
 //
 void
 env_run(struct Env *e) {
-
-cprintf("env_run here \n\n\n");//внимание
 #ifdef CONFIG_KSPACE
   cprintf("envrun %s: %d\n",
           e->env_status == ENV_RUNNING ? "RUNNING" :
@@ -746,31 +739,29 @@ cprintf("env_run here \n\n\n");//внимание
   //	e->env_tf.  Go back through the code you wrote above
   //	and make sure you have set the relevant parts of
   //	e->env_tf to sensible values.
-  //
-  //
-  // LAB 8 / 3 : Your code here.
-  if (curenv) {  
+  // LAB 3 / 8 code
+  if (curenv) {  // if curenv == False, то сцена пуста
     if (curenv->env_status == ENV_DYING) { 
-      struct Env *old = curenv;  
+      struct Env *old = curenv;
       env_free(curenv);  
       if (old == e) { 
         sched_yield();  
-      }
+      } 
     } else if (curenv->env_status == ENV_RUNNING) { 
-      curenv->env_status = ENV_RUNNABLE;  
+      curenv->env_status = ENV_RUNNABLE;  // запускаем процесс
     }
   }
       
-  curenv = e; 
+  curenv = e;  // текущая среда – е
   curenv->env_status = ENV_RUNNING; 
   curenv->env_runs++; 
-// LAB 8 code
+  // LAB 8 code
   lcr3(curenv->env_cr3);
-  //
-  cprintf("next string call env_pop_tf");
+  // LAB 8 code end
 
   env_pop_tf(&curenv->env_tf);
-  // LAB 3 code end
+  // LAB 3 / 8 code end
 
   while(1) {}
 }
+

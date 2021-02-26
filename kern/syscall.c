@@ -18,8 +18,11 @@ static void
 sys_cputs(const char *s, size_t len) {
   // Check that the user has permission to read memory [s, s+len).
   // Destroy the environment if not.
-
   // LAB 8: Your code here.
+  user_mem_assert(curenv, s, len, PTE_U);
+
+  // Print out the string provided by the user.
+  cprintf("%.*s", (int)len, s);
 }
 
 // Read a character from the system console without blocking.
@@ -27,14 +30,14 @@ sys_cputs(const char *s, size_t len) {
 static int
 sys_cgetc(void) {
   // LAB 8: Your code here.
-  return 0;
+  return cons_getc();
 }
 
 // Returns the current environment's envid.
 static envid_t
 sys_getenvid(void) {
   // LAB 8: Your code here.
-  return -1;
+  return curenv->env_id;
 }
 
 // Destroy a given environment (possibly the currently running environment).
@@ -45,7 +48,17 @@ sys_getenvid(void) {
 static int
 sys_env_destroy(envid_t envid) {
   // LAB 8: Your code here.
-  return -1;
+  int rn;
+  struct Env *e;
+
+  if ((rn = envid2env(envid, &e, 1)) < 0)
+    return rn;
+  if (e == curenv)
+    cprintf("[%08x] exiting gracefully\n", curenv->env_id);
+  else
+    cprintf("[%08x] destroying %08x\n", curenv->env_id, e->env_id);
+  env_destroy(e);
+  return 0;
 }
 
 // Dispatches to the correct kernel function, passing the arguments.
@@ -54,6 +67,17 @@ syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t
   // Call the function corresponding to the 'syscallno' parameter.
   // Return any appropriate return value.
   // LAB 8: Your code here.
-
-  return -E_INVAL;
+  switch(syscallno){
+    case SYS_cputs:
+      sys_cputs((const char *) a1, (size_t) a2);
+      return 0;
+    case SYS_cgetc:
+      return sys_cgetc();
+    case SYS_getenvid:
+      return sys_getenvid();
+    case SYS_env_destroy:
+      return sys_env_destroy((envid_t) a1);
+    default:
+      return -E_INVAL;
+  }
 }
