@@ -135,8 +135,8 @@ i386_init(void) {
     ctor++;
   }
   // LAB 5 code
-  pic_init();
-  rtc_init();
+  //pic_init();
+  //rtc_init();
   // LAB 5 code end
 #ifdef SANITIZE_SHADOW_BASE
   kasan_mem_init();
@@ -168,27 +168,11 @@ i386_init(void) {
 #endif
 
 #if defined(TEST)
-
   // Don't touch -- used by grading script!
 
-  #define S(x) #x
-  #define SS(x) S(x)
-  cprintf("\n\nTEST: %s\n", SS(TEST));
-
-  cprintf("A Test called!\n\n");
   ENV_CREATE(TEST, ENV_TYPE_USER);
-  cprintf("Lemme test it...\n");
 
-  #else
-
-  #define S(x) #x
-  #define SS(x) S(x)
-  cprintf("\n\nTEST: %s\n", SS(TEST));
-  cprintf("Hey boy\n");
-  
-  ENV_CREATE(user_hello, ENV_TYPE_USER);
-  cprintf("Im not running your tests for you today!\n");
-
+#else
 #endif // TEST*
 
   // Schedule and run the first user environment!

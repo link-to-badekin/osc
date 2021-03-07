@@ -69,7 +69,7 @@ trapname(int trapno) {
 void
 trap_init(void) {
   // extern struct Segdesc gdt[];
-  // LAB 8: Your code here.
+  // LAB 8 
   extern void (*divide_thdlr)(void);
   extern void (*debug_thdlr)(void);
   extern void (*nmi_thdlr)(void);
@@ -84,7 +84,7 @@ trap_init(void) {
   extern void (*gpflt_thdlr)(void);
   extern void (*pgflt_thdlr)(void);
   extern void (*fperr_thdlr)(void);
-
+    
   extern void (*syscall_thdlr)(void);
 
   SETGATE(idt[T_DIVIDE], 0, GD_KT, (uint64_t) &divide_thdlr, 0);
@@ -101,9 +101,10 @@ trap_init(void) {
   SETGATE(idt[T_GPFLT], 0, GD_KT, (uint64_t) &gpflt_thdlr, 0);
   SETGATE(idt[T_PGFLT], 0, GD_KT, (uint64_t) &pgflt_thdlr, 0);
   SETGATE(idt[T_FPERR], 0, GD_KT, (uint64_t) &fperr_thdlr, 0);
-
+    
   SETGATE(idt[T_SYSCALL], 0, GD_KT, (uint64_t) &syscall_thdlr, 3);
-  // lab 8 end
+  // LAB 8 end
+
   // Per-CPU setup
   trap_init_percpu();
 }
@@ -189,7 +190,7 @@ print_regs(struct PushRegs *regs) {
 
 static void
 trap_dispatch(struct Trapframe *tf) {
-  //lab 8
+
   int64_t syscallno, a1, a2, a3, a4, a5, ret;
   if (tf->tf_trapno == T_SYSCALL) {
     syscallno           = tf->tf_regs.reg_rax;
@@ -201,7 +202,9 @@ trap_dispatch(struct Trapframe *tf) {
     ret                 = syscall(syscallno, a1, a2, a3, a4, a5);
     tf->tf_regs.reg_rax = ret;
     // breakpoint calls the monitor 
-    print_trapframe(tf);
+    // LAB 9 Attention
+    //print_trapframe(tf);
+    // LAB 9
     return;
   }
 
@@ -222,24 +225,26 @@ trap_dispatch(struct Trapframe *tf) {
   //
   if (tf->tf_trapno == IRQ_OFFSET + IRQ_SPURIOUS) {
     cprintf("Spurious interrupt on irq 7\n");
-    print_trapframe(tf);
     return;
   }
 
   // All timers are actually routed through this IRQ.
-  if (tf->tf_trapno == IRQ_OFFSET + IRQ_CLOCK) {    
+  if (tf->tf_trapno == IRQ_OFFSET + IRQ_CLOCK) {
+
     //lab before
     // rtc_check_status();
     // pic_send_eoi(IRQ_CLOCK); // should-be
     // pic_send_eoi( rtc_check_status() );
-    //lab before
+    //lab before end
+
     timer_for_schedule->handle_interrupts();
 
     sched_yield();
     return;
   }
-
+  
   print_trapframe(tf);
+
   if (!(tf->tf_cs & 0x3)) {
     panic("unhandled trap in kernel");
   } else {
@@ -309,12 +314,17 @@ page_fault_handler(struct Trapframe *tf) {
 
   // Handle kernel-mode page faults.
 
+  
   // LAB 8: Your code here.
   //kernel mode
   if (!(tf->tf_cs & 3)) {
     panic("page fault in kernel!");
   }
-  //Lab 8 end
+  // LAB 8 end
+
+  // We've already handled kernel-mode exceptions, so if we get here,
+  // the page fault happened in user mode.
+
   // We've already handled kernel-mode exceptions, so if we get here,
   // the page fault happened in user mode.
 
@@ -348,11 +358,38 @@ page_fault_handler(struct Trapframe *tf) {
 
   // LAB 9: Your code here.
   // the page fault happened in user mode.
-  // Lab 8
-  cprintf(".%08x. user fault va %08lx ip %08lx\n",
+  struct UTrapframe *utf;
+  uintptr_t uxrsp;
+
+  if (curenv->env_pgfault_upcall) {
+    uxrsp = UXSTACKTOP;
+    if (tf->tf_rsp < UXSTACKTOP && tf->tf_rsp >= UXSTACKTOP - PGSIZE) {
+      uxrsp = tf->tf_rsp - sizeof(uintptr_t);
+    }
+    uxrsp -= sizeof(struct UTrapframe);
+    utf = (struct UTrapframe*) uxrsp;
+
+    user_mem_assert(curenv, utf, sizeof (struct UTrapframe), PTE_W);
+    /* information about the fault */
+    utf->utf_fault_va = fault_va;
+    utf->utf_err = tf->tf_err;
+    /* trap-time return state */
+    utf->utf_regs = tf->tf_regs;
+    utf->utf_rip = tf->tf_rip;
+    utf->utf_rflags = tf->tf_rflags;
+    utf->utf_rsp = tf->tf_rsp;
+     /* the trap-time stack to return to */
+    tf->tf_rsp = uxrsp;
+    tf->tf_rip = (uintptr_t)curenv->env_pgfault_upcall;
+    env_run(curenv);
+  }
+  // LAB 9 end
+
+  // LAB 8 
+  cprintf("[%08x] user fault va %08lx ip %08lx\n",
     curenv->env_id, fault_va, tf->tf_rip);
   print_trapframe(tf);
   // Destroy the environment that caused the fault.
   env_destroy(curenv);
-  // lab 8 end
+  // LAB 8 end
 }

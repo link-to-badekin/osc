@@ -188,12 +188,6 @@ boot_alloc(uint32_t n) {
     panic("Out of memory on boot ");
   }
 
-// This is for sanitizers
-#ifdef SANITIZE_SHADOW_BASE
-  // Unpoison the result since it is now allocated.
-  platform_asan_unpoison(result, n);
-#endif
-
   return result;
  // lab 6 end
 }
@@ -294,6 +288,7 @@ mem_init(void) {
   // Permissions:
   //    - the new image at UENVS  -- kernel R, user R
   //    - envs itself -- kernel RW, user NONE
+  
   // LAB 8: Your code here. 
   //check UENVS (inc/memlayout.h)
 
@@ -309,6 +304,7 @@ mem_init(void) {
   //       the kernel overflows its stack, it will fault rather than
   //       overwrite memory.  Known as a "guard page".
   //     Permissions: kernel RW, user NONE
+  
   // LAB 7: Your code goes here:
   boot_map_region(kern_pml4e, KSTACKTOP - KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W | PTE_P);
   // Additionally map stack to lower 32-bit addresses.
@@ -390,7 +386,7 @@ mem_init(void) {
 void
 kasan_mem_init(void) {
   // Unpoison memory in which kernel was loaded
-  platform_asan_unpoison((void *)KERNBASE, (uint64_t)(boot_alloc(0) - KERNBASE));
+  platform_asan_unpoison((void *)KERNBASE, (uint32_t)(boot_alloc(0) - KERNBASE));
 
   // Go through all pages and unpoison pages which have at least one ref.
   for (int pgidx = 0; pgidx < npages; pgidx++) {
@@ -727,14 +723,14 @@ page_insert(pml4e_t *pml4e, struct PageInfo *pp, void *va, int perm) {
     if (PTE_ADDR(*ptep) == page2pa(pp)) {
       *ptep = (*ptep & 0xfffff000) | perm | PTE_P;
     } else {
-      page_remove(pml4e, va);
-      *ptep = page2pa(pp) | perm | PTE_P;
-      pp->pp_ref++;
-      tlb_invalidate(pml4e, va);
+        page_remove(pml4e, va);
+        *ptep = page2pa(pp) | perm | PTE_P;
+        pp->pp_ref++;
+        tlb_invalidate(pml4e, va);
     }
   } else {
-    *ptep = page2pa(pp) | perm | PTE_P;
-    pp->pp_ref++;
+      *ptep = page2pa(pp) | perm | PTE_P;
+      pp->pp_ref++;
   }
   return 0;
 }
@@ -856,7 +852,17 @@ mmio_map_region(physaddr_t pa, size_t size) {
   return new;
 }
 
-static uintptr_t user_mem_check_addr;
+
+void *
+mmio_remap_last_region(physaddr_t pa, void *addr, size_t oldsize, size_t newsize) {
+
+  oldsize               = ROUNDUP((uintptr_t)addr + oldsize, PGSIZE) - (uintptr_t)addr;
+  if (base - oldsize != (uintptr_t)addr)
+    panic("You dare to remap non-last region?!");
+  base = (uintptr_t)addr;
+  return mmio_map_region(pa, newsize);
+}
+
 
 //
 // Check that an environment is allowed to access the range of memory
@@ -876,6 +882,9 @@ static uintptr_t user_mem_check_addr;
 // Returns 0 if the user program can access this range of addresses,
 // and -E_FAULT otherwise.
 //внимание
+
+static uintptr_t user_mem_check_addr;
+
 int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm) {
   // LAB 8: Your code here.
@@ -920,15 +929,7 @@ user_mem_assert(struct Env *env, const void *va, size_t len, int perm) {
   }
 }
 
-void *
-mmio_remap_last_region(physaddr_t pa, void *addr, size_t oldsize, size_t newsize) {
 
-  oldsize               = ROUNDUP((uintptr_t)addr + oldsize, PGSIZE) - (uintptr_t)addr;
-  if (base - oldsize != (uintptr_t)addr)
-    panic("You dare to remap non-last region?!");
-  base = (uintptr_t)addr;
-  return mmio_map_region(pa, newsize);
-}
 // --------------------------------------------------------------
 // Checking functions.
 // --------------------------------------------------------------
@@ -1211,25 +1212,16 @@ check_page(void) {
   // there is no free memory, so we can't allocate a page table
   assert(page_insert(kern_pml4e, pp1, 0x0, 0) < 0);
 
-  cprintf("pp0 ref count before free = %d\n", pp0->pp_ref);
-  cprintf("pp1 ref count before free = %d\n", pp1->pp_ref);
-  cprintf("pp2 ref count before free = %d\n", pp2->pp_ref);
   // free pp0 and try again: pp0 should be used for page table
   page_free(pp0);
   assert(page_insert(kern_pml4e, pp1, 0x0, 0) < 0);
   page_free(pp2);
   page_free(pp3);
 
-  cprintf("pp0 ref count = %d\n", pp0->pp_ref);
-  cprintf("pp1 ref count = %d\n", pp1->pp_ref);
-  cprintf("pp2 ref count = %d\n", pp2->pp_ref);
-
+  //cprintf("pp0 ref count = %d\n",pp0->pp_ref);
+  //cprintf("pp2 ref count = %d\n",pp2->pp_ref);
   assert(page_insert(kern_pml4e, pp1, 0x0, 0) == 0);
   assert((PTE_ADDR(kern_pml4e[0]) == page2pa(pp0) || PTE_ADDR(kern_pml4e[0]) == page2pa(pp2) || PTE_ADDR(kern_pml4e[0]) == page2pa(pp3)));
-  
-  
-  cprintf("Physical address pp1: %ld\n", page2pa(pp1));
-
   assert(check_va2pa(kern_pml4e, 0x0) == page2pa(pp1));
   assert(pp1->pp_ref == 1);
   //should be able to map pp3 at PGSIZE because pp0 is already allocated for page table
@@ -1296,19 +1288,19 @@ check_page(void) {
   assert(pp3->pp_ref == 1);
 
 #if 0
-	// should be able to page_insert to change a page
-	// and see the new data immediately.
-	memset(page2kva(pp1), 1, PGSIZE);
-	memset(page2kva(pp2), 2, PGSIZE);
-	page_insert(boot_pgdir, pp1, 0x0, 0);
-	assert(pp1->pp_ref == 1);
-	assert(*(int*)0 == 0x01010101);
-	page_insert(boot_pgdir, pp2, 0x0, 0);
-	assert(*(int*)0 == 0x02020202);
-	assert(pp2->pp_ref == 1);
-	assert(pp1->pp_ref == 0);
-	page_remove(boot_pgdir, 0x0);
-	assert(pp2->pp_ref == 0);
+  // should be able to page_insert to change a page
+  // and see the new data immediately.
+  memset(page2kva(pp1), 1, PGSIZE);
+  memset(page2kva(pp2), 2, PGSIZE);
+  page_insert(boot_pgdir, pp1, 0x0, 0);
+  assert(pp1->pp_ref == 1);
+  assert(*(int*)0 == 0x01010101);
+  page_insert(boot_pgdir, pp2, 0x0, 0);
+  assert(*(int*)0 == 0x02020202);
+  assert(pp2->pp_ref == 1);
+  assert(pp1->pp_ref == 0);
+  page_remove(boot_pgdir, 0x0);
+  assert(pp2->pp_ref == 0);
 #endif
 
   // forcibly take pp3 back

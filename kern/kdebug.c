@@ -54,18 +54,24 @@ debuginfo_rip(uintptr_t addr, struct Ripdebuginfo *info) {
   // Temporarily load kernel cr3 and return back once done.
   // Make sure that you fully understand why it is necessary.
   // LAB 8: Your code here.
-
+  //lab 9
   struct Dwarf_Addrs addrs;
+
+  uint64_t tmp_cr3 = rcr3();
+  //lab 9 end
+  lcr3(PADDR(kern_pml4e));
+  
   if (addr <= ULIM) {
-    
+    // LAB 9  
     // LAB 8 code attention
-    uint64_t tmp_cr3 = rcr3();
-    lcr3(PADDR(kern_pml4e));
-    load_kernel_dwarf_info(&addrs);
-    lcr3(tmp_cr3);
+    //uint64_t tmp_cr3 = rcr3();
+    //lcr3(PADDR(kern_pml4e));
+    //load_kernel_dwarf_info(&addrs);
+    //lcr3(tmp_cr3);
     // LAB 8 code end
+    //Lab 9
     
-    //panic("Can't search for user-level addresses yet!");
+    panic("Can't search for user-level addresses yet!");
   } else {
     load_kernel_dwarf_info(&addrs);
   }
@@ -75,6 +81,9 @@ debuginfo_rip(uintptr_t addr, struct Ripdebuginfo *info) {
   Dwarf_Off offset = 0, line_offset = 0;
   code = info_by_address(&addrs, addr, &offset);
   if (code < 0) {
+    // LAB 8 
+    lcr3(tmp_cr3);
+    // LAB 8 end
     return code;
   }
   char *tmp_buf;
@@ -83,10 +92,13 @@ debuginfo_rip(uintptr_t addr, struct Ripdebuginfo *info) {
   code = file_name_by_info(&addrs, offset, buf, sizeof(char *), &line_offset);
   strncpy(info->rip_file, tmp_buf, 256);
   if (code < 0) {
+    // LAB 8 
+    lcr3(tmp_cr3);
+    // LAB 8 end
     return code;
   }
   
-  // LAB2 code
+  // LAB 2 code
     
   // Find line number corresponding to given address.
   // Hint: note that we need the address of `call` instruction, but rip holds
@@ -98,6 +110,9 @@ debuginfo_rip(uintptr_t addr, struct Ripdebuginfo *info) {
   code = line_for_address(&addrs, addr, line_offset, &lineno_store);
   info->rip_line = lineno_store;
   if (code < 0) {
+    // LAB 8
+    lcr3(tmp_cr3);
+    // LAB 8 end
     return code;
   }
     
@@ -108,8 +123,13 @@ debuginfo_rip(uintptr_t addr, struct Ripdebuginfo *info) {
   strncpy(info->rip_fn_name, tmp_buf, 256);
   info->rip_fn_namelen = strnlen(info->rip_fn_name, 256);
   if (code < 0) {
+    // LAB 8 code
+    lcr3(tmp_cr3);
+    // LAB 8 code end
     return code;
   }
+  lcr3(tmp_cr3);
+  
   return 0;
 }
 

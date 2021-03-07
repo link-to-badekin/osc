@@ -21,8 +21,32 @@
 //   a perfectly valid place to map a page.)
 int32_t
 ipc_recv(envid_t *from_env_store, void *pg, int *perm_store) {
-  // LAB 9: Your code here.
-  return -1;
+  // LAB 9 
+  int r;
+
+	if ((r = sys_ipc_recv(pg)) < 0) {
+		if (from_env_store) {
+			*from_env_store = 0;
+		}
+		if (perm_store) {
+			*perm_store = 0;
+		}
+		return r;
+	} else {
+		if (from_env_store) {
+			*from_env_store = thisenv->env_ipc_from;
+		}
+		if (perm_store) {
+			*perm_store = thisenv->env_ipc_perm;
+		}
+#ifdef SANITIZE_USER_SHADOW_BASE
+	  platform_asan_unpoison(pg, PGSIZE);
+#endif
+		return thisenv->env_ipc_value;
+	}
+  // LAB 9 end
+
+
 }
 
 // Send 'val' (and 'pg' with 'perm', if 'pg' is nonnull) to 'toenv'.
@@ -35,7 +59,19 @@ ipc_recv(envid_t *from_env_store, void *pg, int *perm_store) {
 //   as meaning "no page".  (Zero is not the right value.)
 void
 ipc_send(envid_t to_env, uint32_t val, void *pg, int perm) {
-  // LAB 9: Your code here.
+  // LAB 9 code
+  int r;
+
+  if (pg == NULL) {
+    pg = (void *) UTOP;
+  }
+  while ((r = sys_ipc_try_send(to_env, val, pg, perm))) {
+	  if (r < 0 && r != -E_IPC_NOT_RECV) {
+		  panic("ipc_send error: sys_ipc_try_send: %i\n", r);
+	  }
+  }
+  sys_yield();
+  // LAB 9 end
 }
 
 // Find the first environment of the given type.  We'll use this to

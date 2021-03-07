@@ -8,6 +8,7 @@
 
 static void
 rtc_timer_init(void) {
+  pic_init(); //lab 9
   rtc_init();
 }
 

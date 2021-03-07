@@ -244,7 +244,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id) {
   e->env_id = generation | (e - envs);
 
   // Set the basic status variables.
-  e->env_parent_id = parent_id;
+ e->env_parent_id = parent_id;
 #ifdef CONFIG_KSPACE
   e->env_type = ENV_TYPE_KERNEL;
 #else
@@ -252,6 +252,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id) {
 #endif
   e->env_status = ENV_RUNNABLE;
   e->env_runs   = 0;
+
 
   // Clear out all the saved register state,
   // to prevent the register values
@@ -488,15 +489,13 @@ load_icode(struct Env *e, uint8_t *binary) {
       memset(dst + filesz, 0, memsz - filesz); 
     }
   }
-
+  lcr3(PADDR(kern_pml4e));
   e->env_tf.tf_rip = elf->e_entry; 
   //Виртуальный адрес точки входа 
   // в регистр rip записываем адрес точки входа
 #ifdef CONFIG_KSPACE
   bind_functions(e, binary);
 #endif
-  // merge !!!
-  lcr3(PADDR(kern_pml4e));
 
   region_alloc(e, (void *) (USTACKTOP - USTACKSIZE), USTACKSIZE);
 
@@ -628,8 +627,8 @@ env_destroy(struct Env *e) {
     
   // LAB 3 code
   e->env_status = ENV_DYING;
+   env_free(e);
   if (e == curenv) {
-    env_free(e);
     sched_yield();
   }
   // LAB 3 code end

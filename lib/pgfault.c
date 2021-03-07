@@ -28,9 +28,10 @@ set_pgfault_handler(void (*handler)(struct UTrapframe *utf)) {
 
   envid = sys_getenvid();
   if (_pgfault_handler == 0) {
-    // First time through!
+    
     // LAB 9: Your code here.
-
+    sys_page_alloc(envid, (void *) UXSTACKTOP - PGSIZE, PTE_W);
+    // LAB 9 end
   }
 
   // Save handler pointer for assembly to call.
