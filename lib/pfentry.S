@@ -34,7 +34,6 @@
 .globl _pgfault_upcall
 _pgfault_upcall:
 	// Call the C page fault handler.
-	
 	movq  %rsp,%rdi                // passing the function argument in rdi
 	movabs _pgfault_handler, %rax
 	call *%rax
@@ -67,6 +66,7 @@ _pgfault_upcall:
 	//Restore the trap-time registers.  After you do this, you
 	// can no longer modify any general-purpose registers.
 	// LAB 9: Your code here.
+
 	popq %r15
 	popq %r15
 	popq %r15
@@ -90,8 +90,7 @@ _pgfault_upcall:
 	movq %rbx, 32(%rsp)
 
 	popq %rbx
-	popq %rax
-	
+	popq %rax	
 	
 	// Restore rflags from the stack.  After you do this, you can
 	// no longer use arithmetic operations or anything else that
@@ -105,3 +104,4 @@ _pgfault_upcall:
 	// Return to re-execute the instruction that faulted.
 	// LAB 9: Your code here.
 	ret
+

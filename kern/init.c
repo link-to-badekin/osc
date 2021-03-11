@@ -134,10 +134,12 @@ i386_init(void) {
     (*ctor)();
     ctor++;
   }
+
   // LAB 5 code
   //pic_init();
   //rtc_init();
   // LAB 5 code end
+
 #ifdef SANITIZE_SHADOW_BASE
   kasan_mem_init();
 #endif
@@ -156,6 +158,9 @@ i386_init(void) {
   timers_schedule("hpet0");
   clock_idt_init();
 
+  // размаскирование на контроллере линии IRQ_CLOCK, по которой приходят прерывания от часов
+  // irq_setmask_8259A(~(~irq_mask_8259A | (1 << IRQ_CLOCK)));
+
 #ifdef CONFIG_KSPACE
   // Touch all you want.
   ENV_CREATE_KERNEL_TYPE(prog_test1);
@@ -165,15 +170,20 @@ i386_init(void) {
   ENV_CREATE_KERNEL_TYPE(prog_test5);
   ENV_CREATE_KERNEL_TYPE(prog_test6);
 #else
-#endif
+
+  ENV_CREATE(fs_fs, ENV_TYPE_FS);
 
 #if defined(TEST)
   // Don't touch -- used by grading script!
-
   ENV_CREATE(TEST, ENV_TYPE_USER);
-
 #else
+  // Touch all you want.
+  ENV_CREATE(user_icode, ENV_TYPE_USER);
 #endif // TEST*
+#endif
+
+  // Should not be necessary - drains keyboard because interrupt has given up.
+  kbd_intr();
 
   // Schedule and run the first user environment!
   sched_yield();

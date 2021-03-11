@@ -34,14 +34,18 @@ static struct Command commands[] = {
     {"help", "Display this list of commands", mon_help},
     {"hello", "Display greeting message", mon_hello},
     {"kerninfo", "Display information about the kernel", mon_kerninfo},
+
     // LAB 5 code
     {"timer_start", "Start timer", mon_start},
     {"timer_stop", "Stop timer", mon_stop},
     {"timer_freq", "Count processor frequency", mon_frequency},
     // LAB 5 code end
-    //lab 6
+
+
+    // LAB 6 code
     {"memory", "Print list of all physical memory pages", mon_memory},
-    //lab 6 end
+    // LAB 6 code end
+
     {"backtrace", "Print stack backtrace", mon_backtrace}};
 #define NCOMMANDS (sizeof(commands) / sizeof(commands[0]))
 

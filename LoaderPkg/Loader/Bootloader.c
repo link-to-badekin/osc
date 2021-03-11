@@ -96,6 +96,7 @@ InitGraphics (
   UINT32 DetHeight = 720U;
   UINT32 MaxModeNumber = -1U;
   /// 
+
   ASSERT (LoaderParams != NULL);
 
   STATIC EFI_GRAPHICS_OUTPUT_BLT_PIXEL mBlackColour = {0x00, 0x00, 0x00, 0x00};
@@ -184,7 +185,7 @@ InitGraphics (
   //
   // Fill GPU properties.
   //
- 
+
   LoaderParams->FrameBufferBase      = GraphicsOutput->Mode->FrameBufferBase;
   LoaderParams->FrameBufferSize      = GraphicsOutput->Mode->FrameBufferSize;
   LoaderParams->HorizontalResolution = GraphicsOutput->Mode->Info->HorizontalResolution;
@@ -1019,6 +1020,7 @@ UefiMain (
   VOID               *GateData;
 
 #if 0 ///< Uncomment to await debugging
+
   volatile BOOLEAN   Connected;
   DEBUG ((DEBUG_INFO, "JOS: Awaiting debugger connection\n"));
 

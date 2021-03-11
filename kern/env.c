@@ -203,8 +203,8 @@ env_setup_vm(struct Env *e) {
   //	is an exception -- you need to increment env_pgdir's
   //	pp_ref for env_free to work correctly.
   //    - The functions in kern/pmap.h are handy.
-
   // LAB 8: Your code here.
+
 	e->env_pml4e = page2kva(p);
   e->env_cr3 = page2pa(p);
 
@@ -245,6 +245,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id) {
 
   // Set the basic status variables.
  e->env_parent_id = parent_id;
+
 #ifdef CONFIG_KSPACE
   e->env_type = ENV_TYPE_KERNEL;
 #else
@@ -252,7 +253,6 @@ env_alloc(struct Env **newenv_store, envid_t parent_id) {
 #endif
   e->env_status = ENV_RUNNABLE;
   e->env_runs   = 0;
-
 
   // Clear out all the saved register state,
   // to prevent the register values
@@ -316,21 +316,25 @@ env_alloc(struct Env **newenv_store, envid_t parent_id) {
 static void
 region_alloc(struct Env *e, void *va, size_t len) {
   // LAB 8: Your code here.
+
   // (But only if you need it for load_icode.)
   //
   // Hint: It is easier to use region_alloc if the caller can pass
   //   'va' and 'len' values that are not page-aligned.
   //   You should round va down, and round (va + len) up.
   //   (Watch out for corner-cases!)
+
   void *end = ROUNDUP(va + len, PGSIZE);
   va = ROUNDDOWN(va, PGSIZE);
 	struct PageInfo *pi;
 
 	while (va < end) {
-    pi = page_alloc(0);
+
+    pi = page_alloc(ALLOC_ZERO);
     page_insert(e->env_pml4e, pi, va, PTE_U | PTE_W);
     va += PGSIZE;
   }
+  // LAB 8 end
 }
 
 #ifdef SANITIZE_USER_SHADOW_BASE
@@ -499,6 +503,7 @@ load_icode(struct Env *e, uint8_t *binary) {
 
   region_alloc(e, (void *) (USTACKTOP - USTACKSIZE), USTACKSIZE);
 
+
   // LAB 8: One more hint for implementing sanitizers.
 #ifdef SANITIZE_USER_SHADOW_BASE
   cprintf("Allocating shadow base %p:%p\n", (void *)(SANITIZE_USER_SHADOW_BASE), (void *)(SANITIZE_USER_SHADOW_BASE + SANITIZE_USER_SHADOW_SIZE));
@@ -508,6 +513,10 @@ load_icode(struct Env *e, uint8_t *binary) {
   region_alloc(e, (void *)SANITIZE_USER_STACK_SHADOW_BASE, SANITIZE_USER_STACK_SHADOW_SIZE);
   cprintf("Allocating shadow uextra %p:%p\n", (void *)(SANITIZE_USER_EXTRA_SHADOW_BASE), (void *)(SANITIZE_USER_EXTRA_SHADOW_BASE + SANITIZE_USER_EXTRA_SHADOW_SIZE));
   region_alloc(e, (void *)SANITIZE_USER_EXTRA_SHADOW_BASE, SANITIZE_USER_EXTRA_SHADOW_SIZE);
+
+  cprintf("Allocating shadow fs %p:%p\n", (void *)(SANITIZE_USER_FS_SHADOW_BASE), (void *)(SANITIZE_USER_FS_SHADOW_BASE + SANITIZE_USER_FS_SHADOW_SIZE));
+  region_alloc(e, (void *)SANITIZE_USER_FS_SHADOW_BASE, SANITIZE_USER_FS_SHADOW_SIZE);
+
   cprintf("Allocating shadow vpt %p:%p\n", (void *)(SANITIZE_USER_VPT_SHADOW_BASE), (void *)(SANITIZE_USER_VPT_SHADOW_BASE + SANITIZE_USER_VPT_SHADOW_SIZE));
   uvpt_shadow_map(e);
 #endif
@@ -533,7 +542,13 @@ env_create(uint8_t *binary, enum EnvType type) {
 
   load_icode(newenv, binary); // load instruction code
   // LAB 3 code end
-    
+
+
+  // LAB 10 
+  if (type == ENV_TYPE_FS) {
+	    newenv->env_tf.tf_rflags |= FL_IOPL_3;
+	}
+  // LAB 10 end
 }
 
 //
@@ -627,7 +642,9 @@ env_destroy(struct Env *e) {
     
   // LAB 3 code
   e->env_status = ENV_DYING;
+
    env_free(e);
+
   if (e == curenv) {
     sched_yield();
   }
@@ -763,6 +780,7 @@ env_run(struct Env *e) {
   curenv = e;  // текущая среда – е
   curenv->env_status = ENV_RUNNING; 
   curenv->env_runs++; 
+
   // LAB 8 code
   lcr3(curenv->env_cr3);
   // LAB 8 code end

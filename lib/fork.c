@@ -32,7 +32,9 @@ pgfault(struct UTrapframe *utf) {
   if (!((err & FEC_WR) && (uvpt[PGNUM(addr)] & PTE_COW))) {
     panic("Not a WR or not a COW page! va: %lx err: %lx\n", (uint64_t)addr, err);
   }
+
   // LAB 9 end
+
 
   // Allocate a new page, map it at a temporary location (PFTEMP),
   // copy the data from the old page to the new page, then move the new
@@ -45,6 +47,7 @@ pgfault(struct UTrapframe *utf) {
   // LAB 9 code
   if ((r = sys_page_alloc(0, (void *) PFTEMP, PTE_W)) < 0) {
     panic("pgfault error: sys_page_alloc: %i\n", r);
+
   }
 
 #ifdef SANITIZE_USER_SHADOW_BASE 
@@ -61,6 +64,7 @@ pgfault(struct UTrapframe *utf) {
     panic("pgfault error: sys_page_unmap: %i\n", r);
   }
   // LAB 9  end
+
 }
 
 //
@@ -76,8 +80,8 @@ pgfault(struct UTrapframe *utf) {
 //
 static int
 duppage(envid_t envid, uintptr_t pn) {
-
   // LAB 9 
+
   pte_t ent = uvpt[pn] & PTE_SYSCALL;
   int r;
   envid_t id = sys_getenvid();
@@ -125,6 +129,7 @@ fork(void) {
 
   set_pgfault_handler(pgfault);
 
+
   if ((e = sys_exofork()) < 0) {
     panic("fork error: %i\n", (int) e);
   }
@@ -134,6 +139,7 @@ fork(void) {
     return 0;
   } else {
     uint64_t i;
+
     for (i = 0; i < UTOP / PGSIZE; i++) {
       if ((uvpml4e[VPML4E(i * PGSIZE)] & PTE_P) && (uvpde[VPDPE(i * PGSIZE)] & PTE_P) && (uvpd[VPD(i * PGSIZE)] & PTE_P)) {
         void * addr = (void *)(i * PGSIZE);
@@ -189,7 +195,6 @@ fork(void) {
     }
     return e;
   }
-
 }
 
 // Challenge!
@@ -198,3 +203,4 @@ sfork(void) {
   panic("sfork not implemented");
   return -E_INVAL;
 }
+

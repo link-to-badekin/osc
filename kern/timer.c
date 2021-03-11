@@ -90,6 +90,9 @@ acpi_enable(void) {
   }
 }
 
+
+
+// Obtain RSDP ACPI table address from bootloader.
 RSDP *
 get_rsdp(void) {
   static void *krsdp = NULL;
@@ -108,6 +111,7 @@ static void * acpi_find_table(const char * sign) {
   static size_t krsdt_len;
   static size_t krsdt_entsz;
   
+
   uint8_t cksm = 0;
 
   if (!krsdt) {
@@ -119,18 +123,22 @@ static void * acpi_find_table(const char * sign) {
     if (strncmp(krsdp->Signature, "RSD PTR", 8))
       for (size_t i = 0; i < offsetof(RSDP, Length); i++)
       cksm = (uint8_t)(cksm + ((uint8_t *)krsdp)[i]);
+
     if (cksm)
       panic("Invalid RSDP");
 
     uint64_t rsdt_pa = krsdp->RsdtAddress;
     krsdt_entsz = 4;
+
     if (krsdp->Revision) {
       /* ACPI version >= 2.0 */
       for (size_t i = 0; i < krsdp->Length; i++)
         cksm = (uint8_t)(cksm + ((uint8_t *)krsdp)[i]);
       if (cksm)
         panic("Invalid RSDP");	
+      
       rsdt_pa = krsdp->XsdtAddress;
+
       krsdt_entsz = 8;
     }
 
@@ -155,6 +163,7 @@ static void * acpi_find_table(const char * sign) {
 
   ACPISDTHeader * hd = NULL;
 
+
   for (size_t i = 0; i < krsdt_len; i++) {
     /* Assume little endian */
     uint64_t fadt_pa = 0;
@@ -165,13 +174,12 @@ static void * acpi_find_table(const char * sign) {
     hd = mmio_remap_last_region(fadt_pa, hd, sizeof(ACPISDTHeader), krsdt->h.Length);
 
     for (size_t i = 0; i < hd->Length; i++)
-    cksm = (uint8_t)(cksm + ((uint8_t *)hd)[i]);
+
+      cksm = (uint8_t)(cksm + ((uint8_t *)hd)[i]);
     if (cksm)
       panic("ACPI table '%.4s' invalid", hd->Signature);
-
-    if (!strncmp(hd->Signature, sign, 4)) 
+    if (!strncmp(hd->Signature, sign, 4))
       return hd;
-
   }
 
   return NULL;

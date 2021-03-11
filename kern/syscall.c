@@ -24,14 +24,15 @@ sys_cputs(const char *s, size_t len) {
 
   // Print out the string provided by the user.
   cprintf("%.*s", (int)len, s);
-}
 
+}
 // Read a character from the system console without blocking.
 // Returns the character, or 0 if there is no input waiting.
 static int
 sys_cgetc(void) {
   // LAB 8: Your code here.
   return cons_getc();
+
 }
 
 // Returns the current environment's envid.
@@ -48,6 +49,7 @@ sys_getenvid(void) {
 //		or the caller doesn't have permission to change envid.
 static int
 sys_env_destroy(envid_t envid) {
+
   // LAB 8: Your code here.
   int rn;
   struct Env *e;
@@ -79,6 +81,7 @@ sys_exofork(void) {
   // status is set to ENV_NOT_RUNNABLE, and the register set is copied
   // from the current environment -- but tweaked so sys_exofork
   // will appear to return 0.
+
 
   // LAB 9: Your code here.
   struct Env *e = NULL;
@@ -127,6 +130,7 @@ sys_env_set_status(envid_t envid, int status) {
   e->env_status = status;
   return 0;
   // LAB 9 end
+
 }
 
 // Set the page fault upcall for 'envid' by modifying the corresponding struct
@@ -223,10 +227,10 @@ sys_page_map(envid_t srcenvid, void *srcva,
   //   parameters for correctness.
   //   Use the third argument to page_lookup() to
   //   check the current permissions on the page.
-
   // LAB 9: Your code here.
   struct Env *srcenv, *dstenv;
   struct PageInfo *pg;
+
   pte_t *ptep;
 
   if (envid2env(srcenvid, &srcenv, 1) < 0 || envid2env(dstenvid, &dstenv, 1) < 0) {
@@ -268,6 +272,7 @@ sys_page_unmap(envid_t envid, void *va) {
   // Hint: This function is a wrapper around page_remove().
 
   // LAB 9: Your code here.
+
   struct Env *e;
     
   if (envid2env(envid, &e, 1) < 0) {
@@ -278,6 +283,7 @@ sys_page_unmap(envid_t envid, void *va) {
   }
   page_remove(e->env_pml4e, va);
   return 0;
+
 }
 
 // Try to send 'value' to the target env 'envid'.
@@ -320,15 +326,15 @@ sys_page_unmap(envid_t envid, void *va) {
 //		address space.
 static int
 sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm) {
+//merge
   // LAB 9: Your code here.
   struct Env *e;
-  struct PageInfo *pi;
+  struct PageInfo *p;
   pte_t *ptep;
 
   if (envid2env(envid, &e, 0) < 0) {
     return -E_BAD_ENV;
   }
-
   if (!e->env_ipc_recving) {
     return -E_IPC_NOT_RECV;
   }
@@ -337,32 +343,26 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm) {
     if (PGOFF(srcva)) {
       return -E_INVAL;
     }
-
-    if ((perm & ~(PTE_U | PTE_P)) || (perm & ~PTE_SYSCALL)) {
+    if ((perm & ~(PTE_AVAIL | PTE_W)) != (PTE_U | PTE_P)) {
       return -E_INVAL;
     }
-
-    if (!(pi = page_lookup(curenv->env_pml4e, srcva, &ptep))) {
+    if (!(p = page_lookup(curenv->env_pml4e, srcva, &ptep))) {
       return -E_INVAL;
     }
-
     if (!(*ptep & PTE_W) && (perm & PTE_W)) {
       return -E_INVAL;
     }
-
-    if (page_insert(e->env_pml4e, pi, e->env_ipc_dstva, perm)) {
+    if (page_insert(e->env_pml4e, p, e->env_ipc_dstva, perm)) {
       return -E_NO_MEM;
     }
-  }
-  else {
+    e->env_ipc_perm = perm;
+  } else {
     e->env_ipc_perm = 0;
   }
-
   e->env_ipc_recving = 0;
   e->env_ipc_from = curenv->env_id;
   e->env_ipc_value = value;
   e->env_status = ENV_RUNNABLE;
-
   return 0;
 }
 
@@ -379,6 +379,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm) {
 //	-E_INVAL if dstva < UTOP but dstva is not page-aligned.
 static int
 sys_ipc_recv(void *dstva) {
+
   // LAB 9: Your code here.
 
   if ((uintptr_t)dstva < UTOP && PGOFF(dstva)) {

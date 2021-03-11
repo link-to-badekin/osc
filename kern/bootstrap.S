@@ -55,7 +55,9 @@ _head64:
   movl $pde2,%ebx
   orl $PTE_P,%ebx
   orl $PTE_W,%ebx
-  # 2nd  entry - 0x8040000000
+
+  # 2nd entry - 0x8040000000
+
   movl %ebx,0x8(%edi)
 
   # Setting the pgdir so that the LA=PA.

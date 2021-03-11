@@ -32,20 +32,30 @@ struct Timer timer_rtc = {
 
 void
 rtc_init(void) {
+
+  // запрет прерываний
+
   nmi_disable();
 
   // LAB 4 code
   uint8_t reg_a = 0, reg_b = 0;
   
+
+  // меняем делитель частоты регистра часов А,
+  // чтобы прерывания приходили раз в полсекунды
   outb(IO_RTC_CMND, RTC_AREG);
   reg_a = inb(IO_RTC_DATA);
-  reg_a = reg_a | 0x0F;
+  reg_a = reg_a | 0x0F; // биты 0-3 = 1 => 500 мс (2 Гц) 
   outb(IO_RTC_DATA, reg_a);
+
+  // устанавливаем бит RTC_PIE в регистре часов В
 
   outb(IO_RTC_CMND, RTC_BREG);
   reg_b = inb(IO_RTC_DATA);
   reg_b = reg_b | RTC_PIE; 
   outb(IO_RTC_DATA, reg_b);
+
+  // разрешить прерывания
 
   nmi_enable();
   // LAB 4 code end

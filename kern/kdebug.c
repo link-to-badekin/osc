@@ -6,9 +6,10 @@
 #include <inc/x86.h>
 
 
+#include <kern/kdebug.h>
 #include <kern/pmap.h>
 #include <kern/env.h>
-#include <kern/kdebug.h>
+
 #include <inc/uefi.h>
 
 void
@@ -71,6 +72,7 @@ debuginfo_rip(uintptr_t addr, struct Ripdebuginfo *info) {
     // LAB 8 code end
     //Lab 9
     
+
     panic("Can't search for user-level addresses yet!");
   } else {
     load_kernel_dwarf_info(&addrs);
@@ -81,9 +83,11 @@ debuginfo_rip(uintptr_t addr, struct Ripdebuginfo *info) {
   Dwarf_Off offset = 0, line_offset = 0;
   code = info_by_address(&addrs, addr, &offset);
   if (code < 0) {
+
     // LAB 8 
     lcr3(tmp_cr3);
     // LAB 8 end
+
     return code;
   }
   char *tmp_buf;
@@ -92,9 +96,11 @@ debuginfo_rip(uintptr_t addr, struct Ripdebuginfo *info) {
   code = file_name_by_info(&addrs, offset, buf, sizeof(char *), &line_offset);
   strncpy(info->rip_file, tmp_buf, 256);
   if (code < 0) {
+
     // LAB 8 
     lcr3(tmp_cr3);
     // LAB 8 end
+
     return code;
   }
   
@@ -118,6 +124,7 @@ debuginfo_rip(uintptr_t addr, struct Ripdebuginfo *info) {
     
   //LAB2 code end
 
+
   buf  = &tmp_buf;
   code = function_by_info(&addrs, addr, offset, buf, sizeof(char *), &info->rip_fn_addr);
   strncpy(info->rip_fn_name, tmp_buf, 256);
@@ -130,6 +137,7 @@ debuginfo_rip(uintptr_t addr, struct Ripdebuginfo *info) {
   }
   lcr3(tmp_cr3);
   
+
   return 0;
 }
 
@@ -140,7 +148,10 @@ find_function(const char *const fname) {
   // and naive_address_by_fname which performs full traversal of DIE tree.
     
   // LAB 3 code
+ // lab 6
 #ifdef CONFIG_KSPACE  
+ // lab 6 end
+
   struct {
     const char *name;
     uintptr_t addr;
@@ -154,7 +165,10 @@ find_function(const char *const fname) {
       return scentry[i].addr;
     }
   }
-#endif
+
+  // LAB 6 
+  #endif
+  // LAB 6 end
   struct Dwarf_Addrs addrs;
   load_kernel_dwarf_info(&addrs);
   uintptr_t offset = 0;

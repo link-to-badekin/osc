@@ -9,9 +9,14 @@ char *
 readline(const char *prompt) {
   int i, c, echoing;
 
-  if (prompt != NULL)
-    cprintf("%s", prompt);
 
+  if (prompt != NULL) {
+#if JOS_KERNEL
+    cprintf("%s", prompt);
+#else
+    fprintf(1, "%s", prompt);
+#endif
+  }
   i       = 0;
   echoing = iscons(0);
   while (1) {
