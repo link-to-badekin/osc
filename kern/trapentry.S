@@ -137,4 +137,8 @@ TRAPHANDLER(gpflt_thdlr, T_GPFLT)
 TRAPHANDLER(pgflt_thdlr, T_PGFLT)
 TRAPHANDLER(align_thdlr, T_ALIGN)
 //21 - 31 Intel reserved. Do not use.
+// LAB 11 
+TRAPHANDLER_NOEC(kbd_thdlr, IRQ_OFFSET + IRQ_KBD)
+TRAPHANDLER_NOEC(serial_thdlr, IRQ_OFFSET + IRQ_SERIAL)
+// LAB 11 end
 #endif

@@ -206,7 +206,6 @@ typedef uint64_t pte_t;
  * which uvpt is set in entry.S).  The PTE for page number N is stored in
 
  * uvpt[N].  (It's worth drawing a diagram of this!)
-
  *
  * A second consequence is that the contents of the current page directory
  * will always be available at virtual address (UVPT + (UVPT >> PGSHIFT)), to

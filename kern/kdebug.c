@@ -40,7 +40,14 @@ load_kernel_dwarf_info(struct Dwarf_Addrs *addrs) {
 int
 debuginfo_rip(uintptr_t addr, struct Ripdebuginfo *info) {
   int code = 0;
+
+
+  // LAB 8 code
+  // const struct Stab *stabs, *stab_end;
+  // const char *stabstr, *stabstr_end;
+  // LAB 8 code end
   // Initialize *info
+
   strcpy(info->rip_file, "<unknown>");
   info->rip_line = 0;
   strcpy(info->rip_fn_name, "<unknown>");
@@ -51,7 +58,7 @@ debuginfo_rip(uintptr_t addr, struct Ripdebuginfo *info) {
   if (!addr) {
     return 0;
   }
-  
+
   // Temporarily load kernel cr3 and return back once done.
   // Make sure that you fully understand why it is necessary.
   // LAB 8: Your code here.
@@ -103,17 +110,17 @@ debuginfo_rip(uintptr_t addr, struct Ripdebuginfo *info) {
 
     return code;
   }
-  
+
   // LAB 2 code
-    
+
   // Find line number corresponding to given address.
   // Hint: note that we need the address of `call` instruction, but rip holds
   // address of the next instruction, so we should substract 5 from it.
   // Hint: use line_for_address from kern/dwarf_lines.c
-    
+
   int lineno_store;
-  addr = addr - 5;
-  code = line_for_address(&addrs, addr, line_offset, &lineno_store);
+  addr           = addr - 5;
+  code           = line_for_address(&addrs, addr, line_offset, &lineno_store);
   info->rip_line = lineno_store;
   if (code < 0) {
     // LAB 8
@@ -123,6 +130,7 @@ debuginfo_rip(uintptr_t addr, struct Ripdebuginfo *info) {
   }
     
   //LAB2 code end
+
 
 
   buf  = &tmp_buf;
@@ -156,11 +164,11 @@ find_function(const char *const fname) {
     const char *name;
     uintptr_t addr;
   } scentry[] = {
-    { "sys_yield", (uintptr_t)sys_yield },
-    { "sys_exit", (uintptr_t)sys_exit },
+      {"sys_yield", (uintptr_t)sys_yield},
+      {"sys_exit", (uintptr_t)sys_exit},
   };
 
-  for (size_t i = 0; i < sizeof(scentry)/sizeof(*scentry); i++) {
+  for (size_t i = 0; i < sizeof(scentry) / sizeof(*scentry); i++) {
     if (!strcmp(scentry[i].name, fname)) {
       return scentry[i].addr;
     }
@@ -169,6 +177,7 @@ find_function(const char *const fname) {
   // LAB 6 
   #endif
   // LAB 6 end
+
   struct Dwarf_Addrs addrs;
   load_kernel_dwarf_info(&addrs);
   uintptr_t offset = 0;

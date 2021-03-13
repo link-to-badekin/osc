@@ -86,74 +86,73 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf) {
   return 0;
 }
 
-
 int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf) {
   // LAB 2 code
-  
+
   cprintf("Stack backtrace:\n");
-  uint64_t rbp = read_rbp();
-  uintptr_t * pointer = (uintptr_t *)rbp;
+  uint64_t rbp       = read_rbp();
+  uintptr_t *pointer = (uintptr_t *)rbp;
   uint64_t rip;
   uint64_t buf;
   int digits_16;
   int code;
   struct Ripdebuginfo info;
-    
+
   while (rbp != 0) {
-      buf = rbp;
-      
-      // counting how many digits rbp has in hexadecimal representation
-      digits_16 = 1;
+    buf = rbp;
+
+    // counting how many digits rbp has in hexadecimal representation
+    digits_16 = 1;
+    buf       = buf / 16;
+    while (buf != 0) {
+      digits_16++;
       buf = buf / 16;
-      while (buf != 0) {
-        digits_16++;
-        buf = buf / 16;
-      }
-      
-      cprintf("  rbp ");
-      
-      // first print additional zeroes
-      for (int i = 1; i <= 16 - digits_16; i++) {
-        cprintf("0");
-      }
-      cprintf("%lx", rbp);
-      
-      // get next rbp from stack
-      rbp = *pointer;
-      
-      // get rip from stack
-      pointer++;
-      rip = *pointer;
-      
-      // counting how many digits rip has in hexadecimal representation
-      buf = rip;
-      digits_16 = 1;
-      buf = buf / 16;
-      while (buf != 0) {
-        digits_16++;
-        buf = buf / 16;
-      }
-      
-      cprintf("  rip ");
-      
-      // first print additional zeroes
-      for (int i = 1; i <= 16 - digits_16; i++) {
-        cprintf("0");
-      }
-      cprintf("%lx\n", rip);
-      
-      // get and print debug info
-      code = debuginfo_rip((uintptr_t)rip, (struct Ripdebuginfo *)&info);
-      if (code == 0) {
-          cprintf("         %s:%d: %s+%lu\n", info.rip_file, info.rip_line, info.rip_fn_name, rip - info.rip_fn_addr);
-      } else {
-          cprintf("Info not found");
-      }
-      
-      pointer = (uintptr_t *)rbp;
     }
-    
+
+    cprintf("  rbp ");
+
+    // first print additional zeroes
+    for (int i = 1; i <= 16 - digits_16; i++) {
+      cprintf("0");
+    }
+    cprintf("%lx", rbp);
+
+    // get next rbp from stack
+    rbp = *pointer;
+
+    // get rip from stack
+    pointer++;
+    rip = *pointer;
+
+    // counting how many digits rip has in hexadecimal representation
+    buf       = rip;
+    digits_16 = 1;
+    buf       = buf / 16;
+    while (buf != 0) {
+      digits_16++;
+      buf = buf / 16;
+    }
+
+    cprintf("  rip ");
+
+    // first print additional zeroes
+    for (int i = 1; i <= 16 - digits_16; i++) {
+      cprintf("0");
+    }
+    cprintf("%lx\n", rip);
+
+    // get and print debug info
+    code = debuginfo_rip((uintptr_t)rip, (struct Ripdebuginfo *)&info);
+    if (code == 0) {
+      cprintf("         %s:%d: %s+%lu\n", info.rip_file, info.rip_line, info.rip_fn_name, rip - info.rip_fn_addr);
+    } else {
+      cprintf("Info not found");
+    }
+
+    pointer = (uintptr_t *)rbp;
+  }
+
   // LAB 2 code end
   return 0;
 }
@@ -215,7 +214,6 @@ mon_memory(int argc, char **argv, struct Trapframe *tf) {
 
   return 0;
 }
-
 
 /***** Kernel monitor command interpreter *****/
 

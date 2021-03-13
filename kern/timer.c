@@ -89,9 +89,6 @@ acpi_enable(void) {
   while ((inw(fadt->PM1aControlBlock) & 1) == 0) {
   }
 }
-
-
-
 // Obtain RSDP ACPI table address from bootloader.
 RSDP *
 get_rsdp(void) {
@@ -311,10 +308,10 @@ hpet_get_main_cnt(void) {
 // Hint: to be able to use HPET as PIT replacement consult
 // LegacyReplacement functionality in HPET spec.
 
-#define HPET_TN_TYPE_CNF (1 << 3)
+#define HPET_TN_TYPE_CNF    (1 << 3)
 #define HPET_TN_INT_ENB_CNF (1 << 2)
 #define HPET_TN_VAL_SET_CNF (1 << 6)
-#define HPET_LEG_RT_CNF (1 << 1)
+#define HPET_LEG_RT_CNF     (1 << 1)
 
 void
 hpet_enable_interrupts_tim0(void) {
@@ -365,7 +362,7 @@ hpet_cpu_frequency(void) {
   uint64_t delta = 0, target = hpetFreq / time_res;
 
   uint64_t tick0 = hpet_get_main_cnt();
-  uint64_t tsc0 = read_tsc();
+  uint64_t tsc0  = read_tsc();
   do {
     asm("pause");
     delta = hpet_get_main_cnt() - tick0;
@@ -373,7 +370,7 @@ hpet_cpu_frequency(void) {
 
   uint64_t tsc1 = read_tsc();
 
-  return (tsc1 - tsc0) * time_res; 
+  return (tsc1 - tsc0) * time_res;
   // LAB 5 code end
   // return 0;
 }
@@ -394,7 +391,7 @@ uint64_t
 pmtimer_cpu_frequency(void) {
   // LAB 5 code
   uint32_t time_res = 100;
-  uint32_t tick0 = pmtimer_get_timeval();
+  uint32_t tick0    = pmtimer_get_timeval();
   uint64_t delta = 0, target = PM_FREQ / time_res;
 
   uint64_t tsc0 = read_tsc();
@@ -402,7 +399,7 @@ pmtimer_cpu_frequency(void) {
   do {
     asm("pause");
     uint32_t tick1 = pmtimer_get_timeval();
-    delta = tick1 - tick0;
+    delta          = tick1 - tick0;
     if (-delta <= 0xFFFFFF) {
       delta += 0xFFFFFF;
     } else if (tick0 > tick1) {

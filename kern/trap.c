@@ -71,22 +71,26 @@ trap_init(void) {
   // extern struct Segdesc gdt[];
   // LAB 8
   extern void (*divide_thdlr)(void);
-	extern void (*debug_thdlr)(void);
-	extern void (*nmi_thdlr)(void);
-	extern void (*brkpt_thdlr)(void);
-	extern void (*oflow_thdlr)(void);
-	extern void (*bound_thdlr)(void);
-	extern void (*illop_thdlr)(void);
-	extern void (*device_thdlr)(void);
-	extern void (*tss_thdlr)(void);
-	extern void (*segnp_thdlr)(void);
-	extern void (*stack_thdlr)(void);
-	extern void (*gpflt_thdlr)(void);
-	extern void (*pgflt_thdlr)(void);
-	extern void (*fperr_thdlr)(void);
-    
+  extern void (*debug_thdlr)(void);
+  extern void (*nmi_thdlr)(void);
+  extern void (*brkpt_thdlr)(void);
+  extern void (*oflow_thdlr)(void);
+  extern void (*bound_thdlr)(void);
+  extern void (*illop_thdlr)(void);
+  extern void (*device_thdlr)(void);
+  extern void (*tss_thdlr)(void);
+  extern void (*segnp_thdlr)(void);
+  extern void (*stack_thdlr)(void);
+  extern void (*gpflt_thdlr)(void);
+  extern void (*pgflt_thdlr)(void);
+  extern void (*fperr_thdlr)(void);
+
   extern void (*syscall_thdlr)(void);
 
+  // LAB 11 
+  extern void (*kbd_thdlr)(void);
+  extern void (*serial_thdlr)(void);
+  // LAB 11 end
 	SETGATE(idt[T_DIVIDE], 0, GD_KT, (uint64_t) &divide_thdlr, 0);
 	SETGATE(idt[T_DEBUG], 0, GD_KT, (uint64_t) &debug_thdlr, 0);
 	SETGATE(idt[T_NMI], 0, GD_KT, (uint64_t) &nmi_thdlr, 0);
@@ -104,6 +108,11 @@ trap_init(void) {
     
   SETGATE(idt[T_SYSCALL], 0, GD_KT, (uint64_t) &syscall_thdlr, 3);
   // LAB 8 end
+
+  // LAB 11
+  SETGATE(idt[IRQ_OFFSET + IRQ_KBD], 0, GD_KT, &kbd_thdlr, 3);
+  SETGATE(idt[IRQ_OFFSET + IRQ_SERIAL], 0, GD_KT, &serial_thdlr, 3);
+  // LAB 11 end
 
   // Per-CPU setup
   trap_init_percpu();
@@ -225,12 +234,15 @@ trap_dispatch(struct Trapframe *tf) {
   //
   if (tf->tf_trapno == IRQ_OFFSET + IRQ_SPURIOUS) {
     cprintf("Spurious interrupt on irq 7\n");
+    // LAB 11 code
+    print_trapframe(tf);
+    pic_send_eoi(IRQ_SPURIOUS);
+    sched_yield();
     return;
   }
 
   // All timers are actually routed through this IRQ.
   if (tf->tf_trapno == IRQ_OFFSET + IRQ_CLOCK) {
-
 
     //lab before
     // rtc_check_status();
@@ -243,13 +255,27 @@ trap_dispatch(struct Trapframe *tf) {
      //lab before end
 
     timer_for_schedule->handle_interrupts();
-
     sched_yield();
     return;
   }
-  
-  print_trapframe(tf);
 
+  // Handle keyboard and serial interrupts.
+  // LAB 11: Your code here.
+
+  if (tf->tf_trapno == IRQ_OFFSET + IRQ_KBD) {
+    kbd_intr();
+    pic_send_eoi(IRQ_KBD);
+    sched_yield();
+    return;
+  }
+  if (tf->tf_trapno == IRQ_OFFSET + IRQ_SERIAL) {
+    serial_intr();
+    pic_send_eoi(IRQ_SERIAL);
+    sched_yield();
+    return;
+  }
+
+  print_trapframe(tf);
   if (!(tf->tf_cs & 0x3)) {
     panic("unhandled trap in kernel");
   } else {

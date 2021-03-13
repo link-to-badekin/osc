@@ -25,6 +25,7 @@ sys_cputs(const char *s, size_t len) {
   // Print out the string provided by the user.
   cprintf("%.*s", (int)len, s);
 
+
 }
 // Read a character from the system console without blocking.
 // Returns the character, or 0 if there is no input waiting.
@@ -32,7 +33,6 @@ static int
 sys_cgetc(void) {
   // LAB 8: Your code here.
   return cons_getc();
-
 }
 
 // Returns the current environment's envid.
@@ -49,7 +49,6 @@ sys_getenvid(void) {
 //		or the caller doesn't have permission to change envid.
 static int
 sys_env_destroy(envid_t envid) {
-
   // LAB 8: Your code here.
   int rn;
   struct Env *e;
@@ -61,6 +60,26 @@ sys_env_destroy(envid_t envid) {
   else
     cprintf("[%08x] destroying %08x\n", curenv->env_id, e->env_id);
   env_destroy(e);
+  return 0;
+}
+
+static int
+sys_env_set_trapframe(envid_t envid, struct Trapframe *tf) {
+  struct Env *env;
+  int res = envid2env(envid, &env, 1);
+
+  if (res < 0)
+    return res;
+
+  user_mem_assert(curenv, tf, sizeof(*tf), 0);
+
+  env->env_tf       = *tf;
+  env->env_tf.tf_cs = GD_UT | 3;
+  env->env_tf.tf_ds = GD_UD | 3;
+  env->env_tf.tf_es = GD_UD | 3;
+  env->env_tf.tf_ss = GD_UD | 3;
+  env->env_tf.tf_rflags &= 0xFFF;
+  env->env_tf.tf_rflags |= FL_IF;
   return 0;
 }
 
@@ -81,8 +100,6 @@ sys_exofork(void) {
   // status is set to ENV_NOT_RUNNABLE, and the register set is copied
   // from the current environment -- but tweaked so sys_exofork
   // will appear to return 0.
-
-
   // LAB 9: Your code here.
   struct Env *e = NULL;
 
@@ -91,15 +108,15 @@ sys_exofork(void) {
   if (r < 0) {
     return r;
   }
-
-  e->env_status = ENV_NOT_RUNNABLE;
-  e->env_tf = curenv->env_tf;
+  e->env_status         = ENV_NOT_RUNNABLE;
+  e->env_tf             = curenv->env_tf;
   e->env_pgfault_upcall = curenv->env_pgfault_upcall;
 
   e->env_tf.tf_regs.reg_rax = 0;
 
   return e->env_id; 
   // LAB 9 end
+
 }
 
 // Set envid's env_status to status, which must be ENV_RUNNABLE
@@ -118,14 +135,15 @@ sys_env_set_status(envid_t envid, int status) {
   // envid's status.
   // LAB 9: Your code here.
   // checkperm = 1 
+
   struct Env *e;
 
   if (envid2env(envid, &e, 1) < 0) {
-      return -E_BAD_ENV;
+    return -E_BAD_ENV;
   }
 
   if (!(status == ENV_RUNNABLE || status == ENV_NOT_RUNNABLE)) {
-      return -E_INVAL;
+    return -E_INVAL;
   }
   e->env_status = status;
   return 0;
@@ -187,18 +205,23 @@ sys_page_alloc(envid_t envid, void *va, int perm) {
     return -E_BAD_ENV;
   }
   if ((uintptr_t) va >= UTOP || PGOFF(va)) {
+
     return -E_INVAL;
   }
+
   if (perm & ~PTE_SYSCALL) {
     return -E_INVAL;
   }
+
   if (!(pp = page_alloc(ALLOC_ZERO))) {
     return -E_NO_MEM;
   }
+
   if (page_insert(e->env_pml4e, pp, va, perm | PTE_U) < 0) {
     page_free(pp);
     return -E_NO_MEM;
   }
+
   return 0;
 }
 
@@ -272,9 +295,8 @@ sys_page_unmap(envid_t envid, void *va) {
   // Hint: This function is a wrapper around page_remove().
 
   // LAB 9: Your code here.
-
   struct Env *e;
-    
+
   if (envid2env(envid, &e, 1) < 0) {
     return -E_BAD_ENV;
   }
@@ -283,7 +305,6 @@ sys_page_unmap(envid_t envid, void *va) {
   }
   page_remove(e->env_pml4e, va);
   return 0;
-
 }
 
 // Try to send 'value' to the target env 'envid'.
@@ -333,36 +354,50 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm) {
   pte_t *ptep;
 
   if (envid2env(envid, &e, 0) < 0) {
+    cprintf("\n environment envid doesn't currently exist\n");
     return -E_BAD_ENV;
   }
+
   if (!e->env_ipc_recving) {
+    // actually ok
     return -E_IPC_NOT_RECV;
   }
 
-  if ((uintptr_t) srcva < UTOP) {
+  if ((uintptr_t)srcva < UTOP) {
     if (PGOFF(srcva)) {
+      cprintf("\nsrcva < UTOP\n");
       return -E_INVAL;
     }
+
     if ((perm & ~(PTE_AVAIL | PTE_W)) != (PTE_U | PTE_P)) {
+      cprintf("\nThis is about to get baad permissions very soon...\n");
       return -E_INVAL;
     }
+
     if (!(p = page_lookup(curenv->env_pml4e, srcva, &ptep))) {
+      cprintf("\nPage lookup error!\n");
       return -E_INVAL;
     }
+
     if (!(*ptep & PTE_W) && (perm & PTE_W)) {
+      cprintf("\nI am quite bound by those permissions...\n");
       return -E_INVAL;
     }
+
     if (page_insert(e->env_pml4e, p, e->env_ipc_dstva, perm)) {
+      cprintf("\nmissing memory to display ...\n");
       return -E_NO_MEM;
     }
     e->env_ipc_perm = perm;
   } else {
     e->env_ipc_perm = 0;
   }
+
   e->env_ipc_recving = 0;
   e->env_ipc_from = curenv->env_id;
   e->env_ipc_value = value;
   e->env_status = ENV_RUNNABLE;
+
   return 0;
 }
 
@@ -379,9 +414,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm) {
 //	-E_INVAL if dstva < UTOP but dstva is not page-aligned.
 static int
 sys_ipc_recv(void *dstva) {
-
   // LAB 9: Your code here.
-
   if ((uintptr_t)dstva < UTOP && PGOFF(dstva)) {
     return -E_INVAL;
   }
@@ -401,6 +434,7 @@ syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t
   // Call the function corresponding to the 'syscallno' parameter.
   // Return any appropriate return value.
   // LAB 8: Your code here.
+<<<<<<< HEAD
   
   switch(syscallno){
     case SYS_cputs:
@@ -433,6 +467,10 @@ syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t
     case SYS_ipc_recv:
       return sys_ipc_recv((void *) a1);
     // LAB 9 end
+    // LAB 11
+    case SYS_env_set_trapframe:
+      return sys_env_set_trapframe((envid_t)a1, (struct Trapframe *)a2);
+    // LAB 11 end
     default:
       return -E_INVAL;
   }

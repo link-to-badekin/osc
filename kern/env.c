@@ -131,19 +131,18 @@ envid2env(envid_t envid, struct Env **env_store, bool checkperm) {
 void
 env_init(void) {
   // Set up envs array
-    
+
   // LAB 3 code
   env_free_list = NULL; // NULLing new env_list
   for (int i = NENV - 1; i >= 0; i--) {
     // initialization in for loop every new environment till max env met
     envs[i].env_status = ENV_FREE;
-    envs[i].env_link = env_free_list;
-    envs[i].env_id   = 0;
-    env_free_list    = &envs[i];
+    envs[i].env_link   = env_free_list;
+    envs[i].env_id     = 0;
+    env_free_list      = &envs[i];
   }
   env_init_percpu();
   // LAB 3 code end
-    
 }
 
 // Load GDT and segment descriptors.
@@ -249,7 +248,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id) {
 #ifdef CONFIG_KSPACE
   e->env_type = ENV_TYPE_KERNEL;
 #else
-  e->env_type      = ENV_TYPE_USER;
+  e->env_type = ENV_TYPE_USER;
 #endif
   e->env_status = ENV_RUNNABLE;
   e->env_runs   = 0;
@@ -276,9 +275,9 @@ env_alloc(struct Env **newenv_store, envid_t parent_id) {
 
   // LAB 3 code
   static int STACK_TOP = 0x2000000;
-  e->env_tf.tf_rsp = STACK_TOP - (e - envs) * 2 * PGSIZE;
+  e->env_tf.tf_rsp     = STACK_TOP - (e - envs) * 2 * PGSIZE;
   // LAB 3 code end
-    
+
 #else
   e->env_tf.tf_ds  = GD_UD | 3;
   e->env_tf.tf_es  = GD_UD | 3;
@@ -325,8 +324,8 @@ region_alloc(struct Env *e, void *va, size_t len) {
   //   (Watch out for corner-cases!)
 
   void *end = ROUNDUP(va + len, PGSIZE);
-  va = ROUNDDOWN(va, PGSIZE);
-	struct PageInfo *pi;
+  va        = ROUNDDOWN(va, PGSIZE);
+  struct PageInfo *pi;
 
 	while (va < end) {
 
@@ -335,6 +334,7 @@ region_alloc(struct Env *e, void *va, size_t len) {
     va += PGSIZE;
   }
   // LAB 8 end
+
 }
 
 #ifdef SANITIZE_USER_SHADOW_BASE
@@ -377,9 +377,9 @@ bind_functions(struct Env *e, uint8_t *binary) {
   // find_function from kdebug.c should be used
   // LAB 3 code
 
-  struct Elf *elf = (struct Elf *)binary;
+  struct Elf *elf    = (struct Elf *)binary;
   struct Secthdr *sh = (struct Secthdr *)(binary + elf->e_shoff);
-  const char *shstr = (char *)binary + sh[elf->e_shstrndx].sh_offset;
+  const char *shstr  = (char *)binary + sh[elf->e_shstrndx].sh_offset;
 
   // Find string table
   size_t strtab = -1UL;
@@ -403,7 +403,7 @@ bind_functions(struct Env *e, uint8_t *binary) {
             ELF64_ST_TYPE(syms[j].st_info) == STT_OBJECT &&
             syms[j].st_size == sizeof(void *)) {
           const char *name = strings + syms[j].st_name;
-          uintptr_t addr = find_function(name);
+          uintptr_t addr   = find_function(name);
 
           if (addr) {
             memcpy((void *)syms[j].st_value, &addr, sizeof(void *));
@@ -491,6 +491,7 @@ load_icode(struct Env *e, uint8_t *binary) {
 
       memcpy(dst, src, filesz);                // dst <- src 
       memset(dst + filesz, 0, memsz - filesz); 
+
     }
   }
   lcr3(PADDR(kern_pml4e));
@@ -531,18 +532,16 @@ load_icode(struct Env *e, uint8_t *binary) {
 //
 void
 env_create(uint8_t *binary, enum EnvType type) {
-    
+
   // LAB 3 code
   struct Env *newenv;
   if (env_alloc(&newenv, 0) < 0) {
-    panic("Can't allocate new environment");  // попытка выделить среду – если нет – вылет по панике ядра
+    panic("Can't allocate new environment"); // попытка выделить среду – если нет – вылет по панике ядра
   }
-      
+
   newenv->env_type = type;
 
   load_icode(newenv, binary); // load instruction code
-  // LAB 3 code end
-
 
   // LAB 10 
   if (type == ENV_TYPE_FS) {
@@ -639,7 +638,7 @@ env_destroy(struct Env *e) {
   // If e is currently running on other CPUs, we change its state to
   // ENV_DYING. A zombie environment will be freed the next time
   // it traps to the kernel.
-    
+
   // LAB 3 code
   e->env_status = ENV_DYING;
 
@@ -700,25 +699,25 @@ env_pop_tf(struct Trapframe *tf) {
       "sti\n\t"
       "ret\n\t"
       :
-      : [ tf ] "a"(tf),
-        [ rip ] "i"(offsetof(struct Trapframe, tf_rip)),
-        [ rax ] "i"(offsetof(struct Trapframe, tf_regs.reg_rax)),
-        [ rbx ] "i"(offsetof(struct Trapframe, tf_regs.reg_rbx)),
-        [ rcx ] "i"(offsetof(struct Trapframe, tf_regs.reg_rcx)),
-        [ rdx ] "i"(offsetof(struct Trapframe, tf_regs.reg_rdx)),
-        [ rsi ] "i"(offsetof(struct Trapframe, tf_regs.reg_rsi)),
-        [ rdi ] "i"(offsetof(struct Trapframe, tf_regs.reg_rdi)),
-        [ rbp ] "i"(offsetof(struct Trapframe, tf_regs.reg_rbp)),
-        [ rd8 ] "i"(offsetof(struct Trapframe, tf_regs.reg_r8)),
-        [ rd9 ] "i"(offsetof(struct Trapframe, tf_regs.reg_r9)),
-        [ rd10 ] "i"(offsetof(struct Trapframe, tf_regs.reg_r10)),
-        [ rd11 ] "i"(offsetof(struct Trapframe, tf_regs.reg_r11)),
-        [ rd12 ] "i"(offsetof(struct Trapframe, tf_regs.reg_r12)),
-        [ rd13 ] "i"(offsetof(struct Trapframe, tf_regs.reg_r13)),
-        [ rd14 ] "i"(offsetof(struct Trapframe, tf_regs.reg_r14)),
-        [ rd15 ] "i"(offsetof(struct Trapframe, tf_regs.reg_r15)),
-        [ rflags ] "i"(offsetof(struct Trapframe, tf_rflags)),
-        [ rsp ] "i"(offsetof(struct Trapframe, tf_rsp))
+      : [tf] "a"(tf),
+        [rip] "i"(offsetof(struct Trapframe, tf_rip)),
+        [rax] "i"(offsetof(struct Trapframe, tf_regs.reg_rax)),
+        [rbx] "i"(offsetof(struct Trapframe, tf_regs.reg_rbx)),
+        [rcx] "i"(offsetof(struct Trapframe, tf_regs.reg_rcx)),
+        [rdx] "i"(offsetof(struct Trapframe, tf_regs.reg_rdx)),
+        [rsi] "i"(offsetof(struct Trapframe, tf_regs.reg_rsi)),
+        [rdi] "i"(offsetof(struct Trapframe, tf_regs.reg_rdi)),
+        [rbp] "i"(offsetof(struct Trapframe, tf_regs.reg_rbp)),
+        [rd8] "i"(offsetof(struct Trapframe, tf_regs.reg_r8)),
+        [rd9] "i"(offsetof(struct Trapframe, tf_regs.reg_r9)),
+        [rd10] "i"(offsetof(struct Trapframe, tf_regs.reg_r10)),
+        [rd11] "i"(offsetof(struct Trapframe, tf_regs.reg_r11)),
+        [rd12] "i"(offsetof(struct Trapframe, tf_regs.reg_r12)),
+        [rd13] "i"(offsetof(struct Trapframe, tf_regs.reg_r13)),
+        [rd14] "i"(offsetof(struct Trapframe, tf_regs.reg_r14)),
+        [rd15] "i"(offsetof(struct Trapframe, tf_regs.reg_r15)),
+        [rflags] "i"(offsetof(struct Trapframe, tf_rflags)),
+        [rsp] "i"(offsetof(struct Trapframe, tf_rsp))
       : "cc", "memory", "ebx", "ecx", "edx", "esi", "edi");
 #else
   __asm __volatile("movq %0,%%rsp\n" POPA
@@ -744,8 +743,9 @@ void
 env_run(struct Env *e) {
 #ifdef CONFIG_KSPACE
   cprintf("envrun %s: %d\n",
-          e->env_status == ENV_RUNNING ? "RUNNING" :
-                                         e->env_status == ENV_RUNNABLE ? "RUNNABLE" : "(unknown)",
+          e->env_status == ENV_RUNNING  ? "RUNNING" :
+          e->env_status == ENV_RUNNABLE ? "RUNNABLE" :
+                                          "(unknown)",
           ENVX(e->env_id));
 #endif
 
@@ -764,6 +764,7 @@ env_run(struct Env *e) {
   //	e->env_tf.  Go back through the code you wrote above
   //	and make sure you have set the relevant parts of
   //	e->env_tf to sensible values.
+<<<<<<< HEAD
   // LAB 3 / 8 code
   if (curenv) {  // if curenv == False, то сцена пуста
     if (curenv->env_status == ENV_DYING) { 
@@ -781,13 +782,13 @@ env_run(struct Env *e) {
   curenv->env_status = ENV_RUNNING; 
   curenv->env_runs++; 
 
-  // LAB 8 code
+  // LAB 8 
   lcr3(curenv->env_cr3);
-  // LAB 8 code end
+  // LAB 8  end
 
   env_pop_tf(&curenv->env_tf);
-  // LAB 3 / 8 code end
+  // LAB 3 / 8 end
 
-  while(1) {}
+  while (1) {}
 }
 

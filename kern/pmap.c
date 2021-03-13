@@ -159,6 +159,7 @@ static void check_page_installed_pml4(void);
 static void *
 boot_alloc(uint32_t n) {
   static char *nextfree; // virtual address of next byte of free memory
+
   char *result;
 
   // Initialize nextfree if this is the first time.
@@ -260,6 +261,7 @@ mem_init(void) {
   // Make 'envs' point to an array of size 'NENV' of 'struct Env'.
   // LAB 8: Your code here.
   envs = (struct Env *)boot_alloc(sizeof(* envs) * NENV);
+
   memset(envs, 0, sizeof(*envs) * NENV);
 
   //////////////////////////////////////////////////////////////////////
@@ -298,7 +300,6 @@ mem_init(void) {
   //check UENVS (inc/memlayout.h)
 
   boot_map_region(kern_pml4e, UENVS, ROUNDUP(NENV * sizeof(*envs), PGSIZE), PADDR(envs), PTE_U | PTE_P);
-  
 
   //////////////////////////////////////////////////////////////////////
   // Use the physical memory that 'bootstack' refers to as the kernel
@@ -311,9 +312,9 @@ mem_init(void) {
   //       overwrite memory.  Known as a "guard page".
   //     Permissions: kernel RW, user NONE
 
-  
   // LAB 7: Your code goes here:
   boot_map_region(kern_pml4e, KSTACKTOP - KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W | PTE_P);
+
 
   // Additionally map stack to lower 32-bit addresses.
   boot_map_region(kern_pml4e, X86ADDR(KSTACKTOP - KSTKSIZE), KSTKSIZE, PADDR(bootstack), PTE_P | PTE_W);
@@ -328,7 +329,6 @@ mem_init(void) {
   // LAB 7: Your code goes here:
 
   boot_map_region(kern_pml4e, KERNBASE, npages * PGSIZE, 0, PTE_P | PTE_W);
-
 
   // Additionally map kernel to lower 32-bit addresses. Assumes kernel should not exceed 50 mb.
   size_to_alloc = MIN(0x3200000, npages * PGSIZE);
@@ -616,7 +616,6 @@ pml4e_walk(pml4e_t *pml4e, const void *va, int create) {
   if (pml4e[PML4(va)] & PTE_P) {
     return pdpe_walk((pte_t *)KADDR(PTE_ADDR(pml4e[PML4(va)])), va, create);
   } 
-
   if (create) {
     struct PageInfo *np;
     np = page_alloc(ALLOC_ZERO);
@@ -637,7 +636,7 @@ pdpe_walk(pdpe_t *pdpe, const void *va, int create) {
   if (pdpe[PDPE(va)] & PTE_P) {
     return pgdir_walk((pte_t *)KADDR(PTE_ADDR(pdpe[PDPE(va)])), va, create);
   }
-  
+
   if (create) {
     struct PageInfo *np;
     np = page_alloc(ALLOC_ZERO);
@@ -648,7 +647,7 @@ pdpe_walk(pdpe_t *pdpe, const void *va, int create) {
       return pgdir_walk((pte_t *)KADDR(PTE_ADDR(pdpe[PDPE(va)])), va, create);
     }
   }
-  
+
   return NULL;
 }
 
@@ -693,8 +692,6 @@ boot_map_region(pml4e_t *pml4e, uintptr_t va, size_t size, physaddr_t pa, int pe
   for (i = 0; i < size; i += PGSIZE) {
     *pml4e_walk(pml4e, (void *)(va + i), 1) = (pa + i) | perm | PTE_P;
   }
-
-
 }
 
 //
@@ -795,18 +792,29 @@ page_lookup(pml4e_t *pml4e, void *va, pte_t **pte_store) {
 //
 void
 page_remove(pml4e_t *pml4e, void *va) {
-  // LAB 7: Fill this function in
+  // LAB 7
+  /*
   pte_t *ptep;
   struct PageInfo *pp;
 
   pp = page_lookup(pml4e, va, &ptep);
-  
   if (pp) {
-
     page_decref(pp);
     *ptep = 0;
     tlb_invalidate(pml4e, va);
   }
+  */
+  pte_t *ent = pml4e_walk(pml4e, va, 0);
+  if (!ent)
+    return;
+
+  if (PTE_ADDR(*ent))
+    page_decref(pa2page(PTE_ADDR(*ent)));
+  *ent = 0;
+
+  tlb_invalidate(pml4e, va);
+
+  // LAB 7 end Attention 
 }
 
 //
@@ -909,8 +917,7 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm) {
   const void *end = va + len;
   const void *va_b = va;
   va = (void*) ROUNDDOWN(va, PGSIZE);
-  while (va < end)
-  {
+  while (va < end){
     pte_t *pte = pml4e_walk(env->env_pml4e, va, 0);
     if (!pte || (*pte & perm) != perm ){
       user_mem_check_addr = (uintptr_t) MAX(va,va_b);
@@ -923,7 +930,6 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm) {
     user_mem_check_addr = MAX(ULIM, (uintptr_t)va_b);
     return -E_FAULT;
   }
-
 
   return 0;
 }
