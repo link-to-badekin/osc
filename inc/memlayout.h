@@ -3,6 +3,7 @@
 
 #ifndef __ASSEMBLER__
 #include <inc/types.h>
+#include <inc/vsyscall.h>
 #include <inc/mmu.h>
 #endif /* not __ASSEMBLER__ */
 
@@ -141,11 +142,17 @@
 // Read-only copies of the global env structures
 #define UENVS (UPAGES - PTSIZE)
 
+// LAB 12
+#define UVSYS (UENVS - PTSIZE)
+// LAB 12  end
+
 /*
  * Top of user VM. User can manipulate VA from UTOP-1 and down!
  */
 
 // Top of user-accessible VM
+// #define UTOP 0x8000000000
+// LAB 12 code
 #define UTOP 0x8000000000
 // Top of one-page user exception stack
 #define UXSTACKTOP UTOP

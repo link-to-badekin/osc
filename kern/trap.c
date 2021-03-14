@@ -2,6 +2,7 @@
 #include <inc/x86.h>
 #include <inc/assert.h>
 #include <inc/string.h>
+#include <inc/vsyscall.h>
 
 #include <kern/pmap.h>
 #include <kern/trap.h>
@@ -14,6 +15,7 @@
 #include <kern/picirq.h>
 #include <kern/cpu.h>
 #include <kern/timer.h>
+#include <kern/vsyscall.h>
 
 extern uintptr_t gdtdesc_64;
 static struct Taskstate ts;
@@ -244,8 +246,9 @@ trap_dispatch(struct Trapframe *tf) {
   // All timers are actually routed through this IRQ.
   if (tf->tf_trapno == IRQ_OFFSET + IRQ_CLOCK) {
 
+
     //lab before
-    // rtc_check_status();
+    rtc_check_status();
     // pic_send_eoi(IRQ_CLOCK); // should-be
     // pic_send_eoi( rtc_check_status() );
    
@@ -254,7 +257,13 @@ trap_dispatch(struct Trapframe *tf) {
     // pic_send_eoi(rtc_check_status());
      //lab before end
 
+    // Update vsys memory with current time.
+    // LAB 12: Your code here.
+    vsys[VSYS_gettime] = gettime();
+    pic_send_eoi(IRQ_CLOCK);
+    // LAB 12  end
     timer_for_schedule->handle_interrupts();
+    
     sched_yield();
     return;
   }

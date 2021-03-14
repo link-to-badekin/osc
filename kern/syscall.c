@@ -5,12 +5,15 @@
 #include <inc/string.h>
 #include <inc/assert.h>
 
+#include <kern/console.h>
 #include <kern/env.h>
 #include <kern/pmap.h>
-#include <kern/trap.h>
-#include <kern/syscall.h>
-#include <kern/console.h>
 #include <kern/sched.h>
+#include <kern/syscall.h>
+#include <kern/trap.h>
+// LAB 12 code
+#include <kern/kclock.h>
+// LAB 1 code end
 
 // Print a string to the system console.
 // The string is exactly 'len' characters long.
@@ -428,6 +431,15 @@ sys_ipc_recv(void *dstva) {
   return 0;
 }
 
+// Return date and time in UNIX timestamp format: seconds passed
+// from 1970-01-01 00:00:00 UTC.
+static int
+sys_gettime(void) {
+  // LAB 12: Your code here.
+  return gettime();
+  // LAB 12 end
+}
+
 // Dispatches to the correct kernel function, passing the arguments.
 uintptr_t
 syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5) {
@@ -470,6 +482,10 @@ syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t
     case SYS_env_set_trapframe:
       return sys_env_set_trapframe((envid_t)a1, (struct Trapframe *)a2);
     // LAB 11 end
+    // LAB 12
+    case SYS_gettime:
+      return sys_gettime();
+    // LAB 12 end
     default:
       return -E_INVAL;
   }

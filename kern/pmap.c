@@ -5,7 +5,9 @@
 #include <inc/error.h>
 #include <inc/string.h>
 #include <inc/assert.h>
+#include <inc/vsyscall.h>
 
+#include <kern/vsyscall.h>
 #include <kern/pmap.h>
 #include <kern/kclock.h>
 #include <kern/env.h>
@@ -24,6 +26,7 @@ size_t npages;                // Amount of physical memory (in pages)
 static size_t npages_basemem; // Amount of base memory (in pages)
 
 // These variables are set in mem_init()
+volatile int *vsys;                                // Virtual syscall space
 pde_t *kern_pml4e;                                 // Kernel's initial page directory
 physaddr_t kern_cr3;                               // Physical address of boot time page directory
 struct PageInfo *pages;                            // Physical page state array
@@ -265,6 +268,13 @@ mem_init(void) {
   memset(envs, 0, sizeof(*envs) * NENV);
 
   //////////////////////////////////////////////////////////////////////
+  // Make 'vsys' point to an array of size 'NVSYSCALLS' of int.
+  // LAB 12: Your code here.
+  vsys = (int *)boot_alloc(sizeof(*vsys) * NVSYSCALLS);
+  memset((int *)vsys, 0, sizeof(*vsys) * NVSYSCALLS);
+  // LAB 12 code end
+
+  //////////////////////////////////////////////////////////////////////
   // Now that we've allocated the initial kernel data structures, we set
   // up the list of free physical pages. Once we've done so, all further
   // memory management will go through the page_* functions. In
@@ -300,6 +310,18 @@ mem_init(void) {
   //check UENVS (inc/memlayout.h)
 
   boot_map_region(kern_pml4e, UENVS, ROUNDUP(NENV * sizeof(*envs), PGSIZE), PADDR(envs), PTE_U | PTE_P);
+
+  //////////////////////////////////////////////////////////////////////
+  // Map the 'vsys' array read-only by the user at linear address UVSYS
+  // (ie. perm = PTE_U | PTE_P).
+  // Permissions:
+  //    - the new image at UVSYS  -- kernel R, user R
+  //    - envs itself -- kernel RW, user NONE
+  // LAB 12: Your code here.
+  boot_map_region(kern_pml4e, UVSYS,
+                  ROUNDUP(sizeof(*vsys) * NVSYSCALLS, PGSIZE),
+                  PADDR((int *)vsys), PTE_U | PTE_P);
+  // LAB 12 code end
 
   //////////////////////////////////////////////////////////////////////
   // Use the physical memory that 'bootstack' refers to as the kernel
@@ -1140,6 +1162,7 @@ check_kern_pml4e(void) {
       case VPD(KSTACKTOP - 1):
       case VPD(UPAGES):
       case VPD(UENVS):
+        // LAB 12: Your code here.
         assert(pgdir[i] & PTE_P);
         break;
       default:

@@ -743,9 +743,9 @@ void
 env_run(struct Env *e) {
 #ifdef CONFIG_KSPACE
   cprintf("envrun %s: %d\n",
-          e->env_status == ENV_RUNNING  ? "RUNNING" :
-          e->env_status == ENV_RUNNABLE ? "RUNNABLE" :
-                                          "(unknown)",
+    e->env_status == ENV_RUNNING  ? "RUNNING" :
+      e->env_status == ENV_RUNNABLE ? "RUNNABLE" :
+        "(unknown)",
           ENVX(e->env_id));
 #endif
 
