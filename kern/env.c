@@ -764,7 +764,6 @@ env_run(struct Env *e) {
   //	e->env_tf.  Go back through the code you wrote above
   //	and make sure you have set the relevant parts of
   //	e->env_tf to sensible values.
-<<<<<<< HEAD
   // LAB 3 / 8 code
   if (curenv) {  // if curenv == False, то сцена пуста
     if (curenv->env_status == ENV_DYING) { 

@@ -52,7 +52,6 @@ pgfault(struct UTrapframe *utf) {
 #ifdef SANITIZE_USER_SHADOW_BASE
   __nosan_memcpy((void *)PFTEMP, ROUNDDOWN(addr, PGSIZE), PGSIZE);
 #else
-<<<<<<< HEAD
   memmove((void *) PFTEMP, ROUNDDOWN(addr, PGSIZE), PGSIZE);
 #endif
 

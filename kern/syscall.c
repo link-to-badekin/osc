@@ -434,8 +434,7 @@ syscall(uintptr_t syscallno, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t
   // Call the function corresponding to the 'syscallno' parameter.
   // Return any appropriate return value.
   // LAB 8: Your code here.
-<<<<<<< HEAD
-  
+
   switch(syscallno){
     case SYS_cputs:
       sys_cputs((const char *) a1, (size_t) a2);
